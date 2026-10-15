@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "CareWatch"
+description = "A responsive remote patient monitoring dashboard with patient insights, consent-based camera activity checks, reviewable wellness reports, and a doctor directory."
+version = "1.0.0"
+id = "artifacts/carewatch"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23750
+
+[services.development]
+run = "pnpm --filter @workspace/carewatch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/carewatch", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/carewatch/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23750"
+BASE_PATH = "/"
