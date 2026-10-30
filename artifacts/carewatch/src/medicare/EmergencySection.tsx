@@ -222,12 +222,12 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
               className="px-4 py-2.5 bg-white text-red-700 hover:bg-red-50 rounded-xl font-black text-xs shadow-lg transition cursor-pointer flex items-center gap-2 animate-bounce"
             >
               <Ambulance className="w-4 h-4 text-red-600" />
-              <span>Track Ambulance (ETA: {formatMinutes(etaSeconds)})</span>
+              <span>{t.trackAmbulance || 'Track Ambulance'} (ETA: {formatMinutes(etaSeconds)})</span>
             </button>
           )}
 
           <div className="bg-black/30 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20 text-xs">
-            <span className="text-[10px] text-red-200 block uppercase font-bold">Your Location:</span>
+            <span className="text-[10px] text-red-200 block uppercase font-bold">{lang === 'hi' ? 'आपका स्थान:' : 'Your Location:'}</span>
             <span className="font-bold text-white">BIET Campus, Lucknow (226021)</span>
           </div>
         </div>
@@ -243,7 +243,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
-                  Ambulance Dispatched & Called
+                  {t.ambulanceCalled || 'Ambulance Dispatched & Called'}
                 </span>
                 <span className="text-xs font-mono font-bold text-amber-200">
                   Unit: UP-32-EG-1082 (108 ALS)
@@ -260,7 +260,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
               className="px-4 py-2 bg-white text-red-700 hover:bg-red-50 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-md"
             >
               <Navigation className="w-3.5 h-3.5" />
-              <span>Live Track Radar</span>
+              <span>{t.liveGpsRadar || 'Live Track Radar'}</span>
             </button>
             <button
               type="button"
@@ -282,7 +282,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full text-emerald-300">
-                  Hospital Emergency Desk Informed
+                  {t.hospitalInformed || 'Hospital Emergency Desk Informed'}
                 </span>
                 <span className="text-xs font-bold text-indigo-200">
                   Sewa Hospital (150m from BIET) & KGMU Trauma
@@ -298,7 +298,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
             className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-md whitespace-nowrap"
           >
             <Phone className="w-3.5 h-3.5" />
-            <span>Call Trauma Desk</span>
+            <span>{t.callHospital || 'Call Trauma Desk'}</span>
           </button>
         </div>
       )}
@@ -340,9 +340,9 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
             }`}
           >
             <AlertOctagon className="w-10 h-10 animate-spin" style={{ animationDuration: '6s' }} />
-            <span>{sosSent ? 'AMBULANCE TRACKING' : 'PRESS SOS'}</span>
+            <span>{sosSent ? (t.trackAmbulance ? t.trackAmbulance.toUpperCase() : 'AMBULANCE TRACKING') : 'SOS (108 / 112)'}</span>
             <span className="text-[10px] font-normal opacity-90">
-              {sosSent ? 'Click to View Radar' : 'Auto-calls 108'}
+              {sosSent ? (lang === 'hi' ? 'रडार देखने के लिए क्लिक करें' : 'Click to View Radar') : (lang === 'hi' ? 'तुरंत 108 पर कॉल' : 'Auto-calls 108')}
             </span>
           </button>
         </div>
@@ -352,7 +352,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
             <div className="font-bold flex items-center justify-between text-sm">
               <div className="flex items-center gap-1.5">
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
-                <span>SOS Alert Successfully Executed</span>
+                <span>{t.sosAlertSent || 'SOS Alert Successfully Executed'}</span>
               </div>
               <button
                 type="button"
@@ -366,7 +366,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
                   }
                 }}
                 className="text-slate-500 hover:text-slate-800 p-1"
-                title={isSirenMuted ? 'Unmute Siren' : 'Mute Siren'}
+                title={isSirenMuted ? (t.unmuteSiren || 'Unmute Siren') : (t.muteSiren || 'Mute Siren')}
               >
                 {isSirenMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-red-500 animate-bounce" />}
               </button>
@@ -383,7 +383,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer transition flex items-center justify-center gap-1 shadow-sm"
               >
                 <Navigation className="w-3.5 h-3.5" />
-                <span>Open Live Radar Tracker</span>
+                <span>{t.liveGpsRadar || 'Open Live Radar Tracker'}</span>
               </button>
 
               <button
@@ -391,7 +391,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
                 onClick={handleCancelSOS}
                 className="px-3 py-2 text-xs text-red-600 font-bold hover:underline cursor-pointer"
               >
-                Cancel SOS
+                {t.cancelSos || 'Cancel SOS'}
               </button>
             </div>
           </div>
@@ -404,7 +404,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-semibold transition cursor-pointer"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>{locationShared ? '✓ Live GPS Shared (BIET Campus)' : 'Share GPS Coordinates'}</span>
+            <span>{locationShared ? (lang === 'hi' ? '✓ लाइव जीपीएस साझा किया गया (बीआईईटी कैंपस)' : '✓ Live GPS Shared (BIET Campus)') : (t.shareLocation || 'Share GPS Coordinates')}</span>
           </button>
         </div>
       </div>
@@ -517,13 +517,13 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
                 <div className="w-3.5 h-3.5 rounded-full bg-red-500 animate-ping"></div>
                 <div>
                   <h3 className="font-black text-base flex items-center gap-2">
-                    <span>Live GPS Ambulance Tracker</span>
+                    <span>{t.liveGpsRadar || 'Live GPS Ambulance Tracker'}</span>
                     <span className="text-[10px] font-bold uppercase bg-red-600 text-white px-2 py-0.5 rounded-full">
-                      ALS Unit En Route
+                      {t.alsUnitEnRoute || 'ALS Unit En Route'}
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Real-time telemetry tracking vehicle UP-32-EG-1082 towards BIET Lucknow (226021)
+                    {lang === 'hi' ? 'रीयल-टाइम टेलीमेट्री वाहन UP-32-EG-1082 बीआईईटी लखनऊ (226021) की ओर रवाना' : 'Real-time telemetry tracking vehicle UP-32-EG-1082 towards BIET Lucknow (226021)'}
                   </p>
                 </div>
               </div>
@@ -541,35 +541,35 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
               {/* ETA & Distance Hero Card */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-r from-red-950/80 via-slate-900 to-indigo-950/80 border border-red-500/30 p-4 rounded-2xl">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Estimated Arrival</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">{t.etaMinutes || 'Estimated Arrival'}</span>
                   <span className="text-2xl font-black text-amber-400 font-mono mt-1 block">
                     {formatMinutes(etaSeconds)}
                   </span>
-                  <span className="text-[10px] text-slate-400">Real-time GPS update</span>
+                  <span className="text-[10px] text-slate-400">{lang === 'hi' ? 'लाइव जीपीएस अपडेट' : 'Real-time GPS update'}</span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Distance</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">{t.distanceRemaining || 'Distance'}</span>
                   <span className="text-2xl font-black text-white font-mono mt-1 block">
                     {ambulanceDistance} km
                   </span>
-                  <span className="text-[10px] text-slate-400">To BIET Campus Gate</span>
+                  <span className="text-[10px] text-slate-400">{lang === 'hi' ? 'बीआईईटी कैंपस गेट तक' : 'To BIET Campus Gate'}</span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Vehicle Speed</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">{lang === 'hi' ? 'वाहन गति' : 'Vehicle Speed'}</span>
                   <span className="text-2xl font-black text-emerald-400 font-mono mt-1 block">
                     54 km/h
                   </span>
-                  <span className="text-[10px] text-slate-400">Sirens & flashers active</span>
+                  <span className="text-[10px] text-slate-400">{lang === 'hi' ? 'सायरन एवं फ्लैशर चालू' : 'Sirens & flashers active'}</span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Destination Bed</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">{lang === 'hi' ? 'सुरक्षित बेड' : 'Destination Bed'}</span>
                   <span className="text-2xl font-black text-indigo-400 font-mono mt-1 block">
                     Bed #03
                   </span>
-                  <span className="text-[10px] text-slate-400">Sewa Hospital Trauma ICU</span>
+                  <span className="text-[10px] text-slate-400">{lang === 'hi' ? 'सेवा अस्पताल ट्रॉमा आईसीयू' : 'Sewa Hospital Trauma ICU'}</span>
                 </div>
               </div>
 
@@ -660,7 +660,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
                     className="w-full mt-2 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"
                   >
                     <Phone className="w-3.5 h-3.5" />
-                    <span>Call Driver / Paramedic (+91 94150 11082)</span>
+                    <span>{t.callDriver || 'Call Driver / Paramedic'} (+91 94150 11082)</span>
                   </button>
                 </div>
 
@@ -669,16 +669,16 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-300 flex items-center gap-1.5">
                       <HeartPulse className="w-4 h-4 text-emerald-400" />
-                      <span>Pre-Informed Emergency Trauma Desk</span>
+                      <span>{t.hospitalInformed || 'Pre-Informed Emergency Trauma Desk'}</span>
                     </span>
                     <span className="text-[10px] text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded-full font-bold">
                       150m from BIET
                     </span>
                   </div>
                   <div className="space-y-1 text-slate-400">
-                    <p>• Hospital: <strong className="text-white">Sewa Hospital Emergency Center</strong></p>
-                    <p>• Emergency Room: <strong className="text-emerald-400">Trauma ICU Room #03 Ready</strong></p>
-                    <p>• On-Duty Medical Officer: <strong className="text-white">Dr. Sarah Khan / Dr. Verma</strong></p>
+                    <p>• {lang === 'hi' ? 'अस्पताल' : 'Hospital'}: <strong className="text-white">Sewa Hospital Emergency Center</strong></p>
+                    <p>• {lang === 'hi' ? 'आपातकालीन कक्ष' : 'Emergency Room'}: <strong className="text-emerald-400">Trauma ICU Room #03 Ready</strong></p>
+                    <p>• {lang === 'hi' ? 'ड्यूटी पर चिकित्सक' : 'On-Duty Medical Officer'}: <strong className="text-white">Dr. Sarah Khan / Dr. Verma</strong></p>
                   </div>
                   <button
                     type="button"
@@ -686,7 +686,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
                     className="w-full mt-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"
                   >
                     <Phone className="w-3.5 h-3.5" />
-                    <span>Call Sewa Hospital Desk (+91 88081 22445)</span>
+                    <span>{t.callHospital || 'Call Sewa Hospital Desk'} (+91 88081 22445)</span>
                   </button>
                 </div>
               </div>
@@ -695,7 +695,7 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
             {/* Modal Footer */}
             <div className="px-5 py-3.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
               <span className="text-xs text-slate-400">
-                Keep phone lines clear for incoming driver confirmation call.
+                {lang === 'hi' ? 'चालक की पुष्टि कॉल के लिए फोन लाइन खाली रखें।' : 'Keep phone lines clear for incoming driver confirmation call.'}
               </span>
 
               <div className="flex gap-2">
@@ -704,14 +704,14 @@ export const EmergencySection: React.FC<{ lang: LanguageCode }> = ({ lang }) => 
                   onClick={handleCancelSOS}
                   className="px-4 py-2 bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white rounded-xl text-xs font-bold transition cursor-pointer"
                 >
-                  Cancel SOS
+                  {t.cancelSos || 'Cancel SOS'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsTrackModalOpen(false)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
-                  Close Tracker
+                  {lang === 'hi' ? 'ट्रैकर बंद करें' : 'Close Tracker'}
                 </button>
               </div>
             </div>

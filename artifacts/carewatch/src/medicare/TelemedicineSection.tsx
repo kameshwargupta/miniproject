@@ -666,7 +666,7 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
                 className="flex-1 px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md group"
               >
                 <Video className="w-4 h-4 group-hover:scale-110 transition-transform text-white" />
-                <span>Start Video Call</span>
+                <span>{t.startCall || 'Start Video Call'}</span>
               </button>
             </div>
           </div>
@@ -826,7 +826,7 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
                 <div className="px-4 py-3 border-b border-slate-800 text-xs font-bold text-slate-300 flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <MessageSquare className="w-4 h-4 text-indigo-400" />
-                    <span>Live Prescription & Symptoms Chat</span>
+                    <span>{t.patientSymptomChat || 'Live Prescription & Symptoms Chat'}</span>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
                     Online
@@ -835,15 +835,15 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
 
                 {/* Quick Symptom Chips */}
                 <div className="p-2 border-b border-slate-800 bg-slate-950/40">
-                  <span className="text-[10px] text-slate-400 font-bold block mb-1">Type or Click Problem:</span>
+                  <span className="text-[10px] text-slate-400 font-bold block mb-1">{lang === 'hi' ? 'समस्या लिखें या क्लिक करें:' : 'Type or Click Problem:'}</span>
                   <div className="flex flex-wrap gap-1">
                     {[
-                      '🌡️ High Fever & Chills',
-                      '🤕 Severe Headache',
-                      '🔥 Stomach Acidity & Gas',
-                      '🤮 Loose Motion & Vomiting',
-                      '😮‍💨 Cough & Sore Throat',
-                      '💊 Request Prescription',
+                      lang === 'hi' ? '🌡️ तेज बुखार और कंपकंपी' : '🌡️ High Fever & Chills',
+                      lang === 'hi' ? '🤕 गंभीर सिरदर्द' : '🤕 Severe Headache',
+                      lang === 'hi' ? '🔥 पेट में गैस और जलन' : '🔥 Stomach Acidity & Gas',
+                      lang === 'hi' ? '🤮 दस्त और उल्टी' : '🤮 Loose Motion & Vomiting',
+                      lang === 'hi' ? '😮‍💨 खांसी और गले में खराश' : '😮‍💨 Cough & Sore Throat',
+                      lang === 'hi' ? '💊 दवा प्रिस्क्रिप्शन चाहिए' : '💊 Request Prescription',
                     ].map((chip) => (
                       <button
                         key={chip}
@@ -880,7 +880,7 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
                           <div className="mt-2.5 p-3 rounded-xl bg-slate-950/80 border border-emerald-500/50 text-white space-y-1.5 shadow-md">
                             <div className="flex items-center justify-between border-b border-emerald-500/30 pb-1">
                               <span className="text-[10px] font-black uppercase text-emerald-400 flex items-center gap-1">
-                                <Pill className="w-3.5 h-3.5" /> Doctor Prescribed (Rx)
+                                <Pill className="w-3.5 h-3.5" /> {t.inCallPrescription || 'Doctor Prescribed (Rx)'}
                               </span>
                               <span className="text-[10px] bg-emerald-950 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
                                 {msg.prescribedMed.duration}
@@ -892,13 +892,13 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
                             </div>
 
                             <div className="text-[11px] text-slate-200">
-                              <span className="text-slate-400">Dosage:</span>{' '}
+                              <span className="text-slate-400">{t.dosage || 'Dosage'}:</span>{' '}
                               <strong className="text-white">{msg.prescribedMed.dosage}</strong> •{' '}
                               {msg.prescribedMed.frequency}
                             </div>
 
                             <div className="text-[10px] text-slate-400 italic">
-                              Instructions: {msg.prescribedMed.instructions}
+                              {t.instructions || 'Instructions'}: {msg.prescribedMed.instructions}
                             </div>
                           </div>
                         )}
@@ -915,7 +915,7 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                    placeholder="Describe your health problem for prescription..."
+                    placeholder={t.typeSymptomsPlaceholder || 'Describe your health problem for prescription...'}
                     className="flex-1 bg-slate-800 text-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                   <button

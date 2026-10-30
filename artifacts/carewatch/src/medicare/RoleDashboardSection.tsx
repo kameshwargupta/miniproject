@@ -77,7 +77,7 @@ export const RoleDashboardSection: React.FC<{
       {/* Role Switcher Pill Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs flex flex-wrap gap-2 items-center justify-between">
         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
-          Select View Role:
+          {lang === 'hi' ? 'भूमिका चुनें:' : 'Select View Role:'}
         </span>
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
           <button

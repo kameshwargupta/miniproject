@@ -153,7 +153,7 @@ export const MediCareApp: React.FC = () => {
         <aside className="hidden lg:block w-64 shrink-0 space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 py-2 block">
-              Core Healthcare Platform
+              {t.corePlatform || 'Core Healthcare Platform'}
             </span>
             <nav className="space-y-1">
               {navItems.map((item) => {
@@ -197,10 +197,10 @@ export const MediCareApp: React.FC = () => {
           <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/40 dark:to-cyan-950/30 border border-blue-200/60 dark:border-blue-900/40 rounded-2xl p-4 text-xs space-y-2">
             <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-300">
               <ShieldCheck className="w-4 h-4 text-blue-600" />
-              <span>Focused Voice Assistance</span>
+              <span>{t.focusedVoice || 'Focused Voice Assistance'}</span>
             </div>
             <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
-              Dedicated voice assistance with speed and playback control is active on AI Report Scanner, AI Medicine Scanner, and MediCare Copilot (with interruption support).
+              {t.voiceFeatureNote || 'Dedicated voice assistance with speed and playback control is active on AI Report Scanner, AI Medicine Scanner, and MediCare Copilot (with interruption support).'}
             </p>
           </div>
         </aside>
@@ -250,7 +250,7 @@ export const MediCareApp: React.FC = () => {
               </div>
 
               <div className="pt-3 border-t text-xs text-slate-400 text-center">
-                MediCare AI • All-in-One Healthcare
+                {t.allInOneFooter || 'MediCare AI • All-in-One Healthcare System'}
               </div>
             </div>
           </div>

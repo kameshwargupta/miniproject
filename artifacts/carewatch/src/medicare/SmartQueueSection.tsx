@@ -312,7 +312,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
             onClick={() => {
               const next = !isAutoCallActive;
               setIsAutoCallActive(next);
-              setSmsToast(next ? '▶️ Auto-calling resumed: Calling next present patient every 45s.' : '⏸️ Auto-calling stopped: Next patient will not be called automatically.');
+              setSmsToast(next ? (lang === 'hi' ? '▶️ ऑटो-कॉल शुरू: प्रत्येक 45 सेकंड में अगले उपस्थित मरीज को बुलाया जा रहा है।' : '▶️ Auto-calling resumed: Calling next present patient every 45s.') : (lang === 'hi' ? '⏸️ ऑटो-कॉल रोक दी गई: अगला मरीज स्वचालित रूप से नहीं बुलाया जाएगा।' : '⏸️ Auto-calling stopped: Next patient will not be called automatically.'));
               setTimeout(() => setSmsToast(null), 5000);
             }}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-2 shadow-md ${
@@ -322,7 +322,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
             }`}
           >
             {isAutoCallActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
-            <span>{isAutoCallActive ? 'Stop Auto-Call (Active)' : 'Start Auto-Call'}</span>
+            <span>{isAutoCallActive ? (t.stopAutoCall || 'Stop Auto-Call') : (t.startAutoCall || 'Start Auto-Call')}</span>
           </button>
 
           <button
@@ -331,7 +331,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
             className="px-4 py-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-white/20 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-md"
           >
             <Tv className="w-4 h-4 text-cyan-400" />
-            <span>TV Lounge Display</span>
+            <span>{t.tvLoungeDisplay || 'TV Lounge Display'}</span>
           </button>
 
           {primaryToken && (
@@ -341,7 +341,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
               className="px-4 py-2.5 rounded-xl bg-white text-blue-700 hover:bg-blue-50 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-md"
             >
               <QrCode className="w-4 h-4 text-blue-600" />
-              <span>Digital OPD Pass</span>
+              <span>{t.digitalOpdPass || 'Digital OPD Pass'}</span>
             </button>
           )}
         </div>
@@ -367,7 +367,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
-                Hospital OPD Doctor Desk Controls
+                {t.staffControls || 'Hospital OPD Doctor Desk Controls'}
               </span>
               <span
                 className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
@@ -376,11 +376,11 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
                     : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                 }`}
               >
-                {isAutoCallActive ? '● Auto-Call Running' : '⏸ Auto-Call Stopped'}
+                {isAutoCallActive ? (t.autoCallRunning || '● Auto-Call Running') : (t.autoCallStopped || '⏸ Auto-Call Stopped')}
               </span>
             </div>
             <span className="text-[11px] text-slate-500">
-              Department: General Medicine (Room 104) • Dr. Sarah Khan
+              {lang === 'hi' ? 'विभाग: सामान्य चिकित्सा (कमरा 104) • डॉ. सारा खान' : 'Department: General Medicine (Room 104) • Dr. Sarah Khan'}
             </span>
           </div>
         </div>
@@ -397,7 +397,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
             }`}
           >
             {isAutoCallActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-            <span>{isAutoCallActive ? 'Pause Auto-Call' : 'Resume Auto-Call'}</span>
+            <span>{isAutoCallActive ? (t.pauseAutoCall || 'Pause Auto-Call') : (t.resumeAutoCall || 'Resume Auto-Call')}</span>
           </button>
 
           {/* Call Next Present Patient */}
@@ -407,7 +407,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
             className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md active:scale-95"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Call Next Present Patient</span>
+            <span>{t.callNext || 'Call Next Present Patient'}</span>
           </button>
 
           <button
@@ -420,7 +420,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
             title="Repeat voice announcement"
           >
             <Volume2 className="w-3.5 h-3.5" />
-            <span>Voice Chime</span>
+            <span>{t.chimeAnnouncement || 'Voice Chime'}</span>
           </button>
         </div>
       </div>
@@ -439,7 +439,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 text-xs">
-            <span>Now Serving</span>
+            <span>{t.nowServing || 'Now Serving'}</span>
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-blue-600 mt-2">A-0{servingTokenNum}</div>
@@ -449,28 +449,28 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-          <div className="text-slate-500 text-xs">Total Registered</div>
+          <div className="text-slate-500 text-xs">{t.tokensAssignedToday || 'Tokens Assigned Today'}</div>
           <div className="text-2xl sm:text-3xl font-black text-indigo-600 mt-2">
-            {activeTokens.length} Patients
+            {activeTokens.length} {lang === 'hi' ? 'मरीज' : 'Patients'}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">{waitingCount} Waiting • {completedCount} Done</div>
+          <div className="text-[11px] text-slate-500 mt-1">{waitingCount} {t.filterWaiting} • {completedCount} {t.filterCompleted}</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-          <div className="text-slate-500 text-xs">Absent / Not Present</div>
+          <div className="text-slate-500 text-xs">{t.filterAbsent || 'Absent'}</div>
           <div className="text-2xl sm:text-3xl font-black text-red-500 mt-2">
             {absentCount}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Skipped during auto-call</div>
+          <div className="text-[11px] text-slate-500 mt-1">{lang === 'hi' ? 'ऑटो-कॉल में छोड़ दिया जाएगा' : 'Skipped during auto-call'}</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-          <div className="text-slate-500 text-xs">Your Token (#A-024)</div>
+          <div className="text-slate-500 text-xs">{t.yourToken || 'Your Booked Token'}</div>
           <div className="text-2xl sm:text-3xl font-black text-emerald-600 mt-2">
             {primaryToken ? `#${primaryToken.queuePosition}` : 'None'}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            {primaryToken?.queuePosition === 0 ? 'Serving Now!' : `Wait: ~${primaryToken?.estimatedWaitMinutes || 0}m`}
+            {primaryToken?.queuePosition === 0 ? (lang === 'hi' ? 'अभी परामर्श जारी!' : 'Serving Now!') : `${t.estimatedWait || 'Wait'}: ~${primaryToken?.estimatedWaitMinutes || 0}m`}
           </div>
         </div>
       </div>
@@ -484,11 +484,11 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-600" />
               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Registered OPD Patients Directory ({activeTokens.length} Registered)
+                {t.registeredPatients || 'Registered OPD Patients'} ({activeTokens.length})
               </h3>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Live roster showing patient name, chief medical problem, priority token, presence status, and doctor call buttons.
+              {lang === 'hi' ? 'लाइव ओपीडी सूची: मरीज का नाम, प्रमुख समस्या, प्राथमिकता टोकन, उपस्थिति स्थिति और डॉक्टर कॉल बटन।' : 'Live roster showing patient name, chief medical problem, priority token, presence status, and doctor call buttons.'}
             </p>
           </div>
 
@@ -500,7 +500,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
                 type="text"
                 value={patientSearch}
                 onChange={(e) => setPatientSearch(e.target.value)}
-                placeholder="Search patient / problem..."
+                placeholder={t.searchPatientPlaceholder || 'Search patient name, token, or symptoms...'}
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -517,7 +517,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  {filter}
+                  {filter === 'all' ? (t.filterAll || 'All') : filter === 'waiting' ? (t.filterWaiting || 'Waiting') : filter === 'absent' ? (t.filterAbsent || 'Absent') : (t.filterCompleted || 'Completed')}
                 </button>
               ))}
             </div>
@@ -615,7 +615,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
                     title="Call patient into doctor room"
                   >
                     <Volume2 className="w-3 h-3" />
-                    <span>Call</span>
+                    <span>{t.call || 'Call'}</span>
                   </button>
 
                   {/* Mark Absent / Present Toggle */}
@@ -630,7 +630,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
                     title={isAbsent ? 'Mark patient present' : 'Mark patient not present'}
                   >
                     {isAbsent ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
-                    <span>{isAbsent ? 'Present' : 'Absent'}</span>
+                    <span>{isAbsent ? (t.markPresent || 'Present') : (t.markAbsent || 'Absent')}</span>
                   </button>
 
                   {/* View OPD Pass */}
@@ -667,13 +667,13 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
         <div className="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
           <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Ticket className="w-5 h-5 text-blue-600" />
-            <span>Book New Digital OPD Token</span>
+            <span>{t.bookNewToken || 'Book New Digital OPD Token'}</span>
           </h3>
 
           <form onSubmit={handleBookToken} className="space-y-3.5 text-xs">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Select Hospital Center
+                {t.selectHospital || 'Select Hospital Center'}
               </label>
               <select
                 value={selectedHosp}
@@ -696,7 +696,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
 
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Clinical Department
+                {t.department || 'Clinical Department'}
               </label>
               <select
                 value={selectedDep}
@@ -713,14 +713,14 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
 
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Patient Full Name *
+                {t.patientName || 'Patient Full Name'} *
               </label>
               <input
                 type="text"
                 required
                 value={patientName}
                 onChange={(e) => setPatientName(e.target.value)}
-                placeholder="Enter patient name"
+                placeholder={lang === 'hi' ? 'मरीज का नाम लिखें' : 'Enter patient name'}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -728,7 +728,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Age
+                  {t.patientAge || 'Age'}
                 </label>
                 <input
                   type="number"
@@ -741,7 +741,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Mobile Number *
+                  {t.patientPhone || 'Mobile Number'} *
                 </label>
                 <input
                   type="tel"
@@ -756,14 +756,14 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
 
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Health Problem / Chief Complaint *
+                {t.patientProblem || 'Health Problem / Chief Complaint'} *
               </label>
               <textarea
                 required
                 rows={2}
                 value={patientProblem}
                 onChange={(e) => setPatientProblem(e.target.value)}
-                placeholder="e.g. Fever, chest pain, acidity, diabetes checkup..."
+                placeholder={lang === 'hi' ? 'उदा. बुखार, सीने में दर्द, गैस, डायबिटीज जांच...' : 'e.g. Fever, chest pain, acidity, diabetes checkup...'}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -778,7 +778,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
                 className="w-4 h-4 text-blue-600 rounded"
               />
               <label htmlFor="smsAlert" className="text-slate-600 dark:text-slate-300 text-[11px] font-medium">
-                Notify me when 2 patients remain
+                {t.smsNotification || 'Notify me when 2 patients remain'}
               </label>
             </div>
 
@@ -786,7 +786,7 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
               type="submit"
               className="w-full mt-2 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md cursor-pointer transition active:scale-98"
             >
-              Generate Digital Token & Pass
+              {t.bookNewToken || 'Generate Digital Token & Pass'}
             </button>
           </form>
         </div>

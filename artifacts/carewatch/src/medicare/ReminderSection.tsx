@@ -382,7 +382,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
             title="Test Alarm Sound and Notification"
           >
             <Bell className="w-4 h-4 animate-bounce" />
-            <span>Test Alarm Sound</span>
+            <span>{t.testAlarm || 'Test Alarm Sound'}</span>
           </button>
 
           <button
@@ -419,17 +419,16 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
 
             <div>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 font-bold uppercase">
-                ⏰ Medicine Alarm Ringing!
+                ⏰ {t.alarmRinging || 'Medicine Alarm Ringing!'}
               </span>
               <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2">
-                Time to take {activeAlarmReminder.medicineName}
+                {lang === 'hi' ? `${activeAlarmReminder.medicineName} लेने का समय` : `Time to take ${activeAlarmReminder.medicineName}`}
               </h3>
               <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-1">
-                {activeAlarmReminder.dosage} • {activeAlarmReminder.mealTiming}
+                {activeAlarmReminder.dosage} • {activeAlarmReminder.mealTiming === 'Before Meal' ? (t.beforeFood || 'Before Meal') : (t.afterFood || 'After Meal')}
               </p>
               <p className="text-xs text-slate-500 mt-1">
-                Course: {activeAlarmReminder.durationDays} Days ({activeAlarmReminder.startDate} to{' '}
-                {activeAlarmReminder.endDate})
+                {lang === 'hi' ? `अवधि: ${activeAlarmReminder.durationDays} दिन (${activeAlarmReminder.startDate} से ${activeAlarmReminder.endDate})` : `Course: ${activeAlarmReminder.durationDays} Days (${activeAlarmReminder.startDate} to ${activeAlarmReminder.endDate})`}
               </p>
             </div>
 
@@ -440,7 +439,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
                 className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg cursor-pointer"
               >
                 <Check className="w-4 h-4" />
-                <span>I Took This Dose (Mark as Taken)</span>
+                <span>{t.iTookThisDose || 'I Took This Dose (Mark as Taken)'}</span>
               </button>
 
               <button
@@ -448,7 +447,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
                 onClick={() => handleDismissAlarm(false)}
                 className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
               >
-                Snooze 5 Minutes / Dismiss Alarm
+                {t.snooze10m || 'Snooze 5 Minutes / Dismiss Alarm'}
               </button>
             </div>
           </div>
@@ -535,14 +534,14 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
             {/* Medicine Name */}
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Medicine Name *
+                {t.medName || 'Medicine Name'} *
               </label>
               <input
                 type="text"
                 required
                 value={newMed}
                 onChange={(e) => setNewMed(e.target.value)}
-                placeholder="e.g. Paracetamol, Dolo 650, Metformin"
+                placeholder={lang === 'hi' ? 'उदा. पैरासिटामोल, डोलो 650, मेटफॉर्मिन' : 'e.g. Paracetamol, Dolo 650, Metformin'}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -550,14 +549,14 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
             {/* Dosage */}
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Dosage Amount *
+                {t.dosageLabel || 'Dosage Amount'} *
               </label>
               <input
                 type="text"
                 required
                 value={newDosage}
                 onChange={(e) => setNewDosage(e.target.value)}
-                placeholder="1 Tablet, 5ml syrup, 2 drops"
+                placeholder={lang === 'hi' ? '1 गोली, 5ml सिरप, 2 बूंदें' : '1 Tablet, 5ml syrup, 2 drops'}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -566,14 +565,14 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="font-semibold text-slate-700 dark:text-slate-300">
-                  Scheduled Daily Time *
+                  {t.scheduleTime || 'Scheduled Daily Time'} *
                 </label>
                 <button
                   type="button"
                   onClick={() => setUseCustomTime(!useCustomTime)}
                   className="text-[10px] text-blue-600 hover:underline font-bold"
                 >
-                  {useCustomTime ? 'Use Presets' : 'Custom Time'}
+                  {useCustomTime ? (lang === 'hi' ? 'प्रीसेट चुनें' : 'Use Presets') : (t.customTime || 'Custom Time')}
                 </button>
               </div>
 
@@ -604,7 +603,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
             {/* Start Date */}
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Starting Date *
+                {t.startDate || 'Starting Date'} *
               </label>
               <input
                 type="date"
@@ -618,35 +617,35 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
             {/* For How Long (Duration in Days) */}
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                For How Long to Take (Duration) *
+                {t.durationDays || 'For How Long to Take (Duration)'} *
               </label>
               <select
                 value={newDurationDays}
                 onChange={(e) => setNewDurationDays(Number(e.target.value))}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value={3}>3 Days Course</option>
-                <option value={5}>5 Days Course (Standard Antibiotic)</option>
-                <option value={7}>7 Days (1 Week)</option>
-                <option value={10}>10 Days Course</option>
-                <option value={14}>14 Days (2 Weeks)</option>
-                <option value={30}>30 Days (1 Month Refill)</option>
-                <option value={90}>90 Days (Chronic Maintenance)</option>
+                <option value={3}>{lang === 'hi' ? '3 दिन का कोर्स' : '3 Days Course'}</option>
+                <option value={5}>{lang === 'hi' ? '5 दिन का कोर्स (एंटीबायोटिक)' : '5 Days Course (Standard Antibiotic)'}</option>
+                <option value={7}>{lang === 'hi' ? '7 दिन (1 सप्ताह)' : '7 Days (1 Week)'}</option>
+                <option value={10}>{lang === 'hi' ? '10 दिन का कोर्स' : '10 Days Course'}</option>
+                <option value={14}>{lang === 'hi' ? '14 दिन (2 सप्ताह)' : '14 Days (2 Weeks)'}</option>
+                <option value={30}>{lang === 'hi' ? '30 दिन (1 माह)' : '30 Days (1 Month Refill)'}</option>
+                <option value={90}>{lang === 'hi' ? '90 दिन (नियमित दवा)' : '90 Days (Chronic Maintenance)'}</option>
               </select>
             </div>
 
             {/* Meal Timing */}
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Meal Relation *
+                {t.mealTiming || 'Meal Relation'} *
               </label>
               <select
                 value={newMeal}
                 onChange={(e) => setNewMeal(e.target.value as any)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="After Meal">After Food (Post-Meal)</option>
-                <option value="Before Meal">Before Food (Empty Stomach)</option>
+                <option value="After Meal">{t.afterFood || 'After Food (Post-Meal)'}</option>
+                <option value="Before Meal">{t.beforeFood || 'Before Food (Empty Stomach)'}</option>
               </select>
             </div>
           </div>

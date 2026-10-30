@@ -93,7 +93,7 @@ export const PharmacyFinderSection: React.FC<{ lang: LanguageCode }> = ({ lang }
         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3.5 text-xs max-w-sm">
           <div className="flex items-center gap-2 text-sky-200 font-bold uppercase tracking-wider text-[11px]">
             <MapPin className="w-4 h-4 text-amber-300 animate-bounce" />
-            <span>Active Pincode: 226021 (Lucknow)</span>
+            <span>{lang === 'hi' ? 'सक्रिय पिनकोड: 226021 (लखनऊ)' : 'Active Pincode: 226021 (Lucknow)'}</span>
           </div>
           <p className="text-white font-bold mt-1 text-xs">
             Bansal Institute of Engineering & Technology (BIET)
@@ -128,7 +128,7 @@ export const PharmacyFinderSection: React.FC<{ lang: LanguageCode }> = ({ lang }
             type="text"
             value={searchMedicine}
             onChange={(e) => setSearchMedicine(e.target.value)}
-            placeholder="Search medicine (Dolo 650, Augmentin, Insulin, ORS) or medical store name..."
+            placeholder={t.searchPharmacy || 'Search medicine (Dolo 650, Augmentin, Insulin, ORS) or medical store name...'}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -143,7 +143,7 @@ export const PharmacyFinderSection: React.FC<{ lang: LanguageCode }> = ({ lang }
                 : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
             }`}
           >
-            {filter24x7 ? '✓ 24x7 Open Stores' : '24x7 Open'}
+            {filter24x7 ? (lang === 'hi' ? '✓ 24x7 खुली दुकानें' : '✓ 24x7 Open Stores') : (t.open24Hours || '24x7 Open')}
           </button>
 
           <button
@@ -155,7 +155,7 @@ export const PharmacyFinderSection: React.FC<{ lang: LanguageCode }> = ({ lang }
                 : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
             }`}
           >
-            {distanceFilter === 'walking' ? '✓ Walking (< 600m)' : 'Walking Distance (< 600m)'}
+            {distanceFilter === 'walking' ? (lang === 'hi' ? '✓ पैदल दूरी (< 600m)' : '✓ Walking (< 600m)') : (lang === 'hi' ? 'पैदल दूरी (< 600m)' : 'Walking Distance (< 600m)')}
           </button>
         </div>
       </div>
@@ -166,10 +166,7 @@ export const PharmacyFinderSection: React.FC<{ lang: LanguageCode }> = ({ lang }
         <div className="lg:col-span-7 space-y-3">
           <div className="flex items-center justify-between text-xs text-slate-500 px-1">
             <span>
-              Showing {filteredPharmacies.length} pharmacies verified near{' '}
-              <strong className="text-slate-800 dark:text-slate-200">
-                BIET Lucknow (226021)
-              </strong>
+              {lang === 'hi' ? `बीआईईटी लखनऊ (226021) के पास ${filteredPharmacies.length} सत्यापित दवा की दुकानें` : `Showing ${filteredPharmacies.length} pharmacies verified near BIET Lucknow (226021)`}
             </span>
           </div>
 
