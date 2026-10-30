@@ -17,9 +17,72 @@ import {
   AlarmClock,
   ShieldAlert,
   X,
+  ShieldCheck,
+  CalendarDays,
 } from 'lucide-react';
 import { type MedicineReminder } from './mockData';
 import { type LanguageCode, TRANSLATIONS } from './translations';
+import { useVoice } from './voiceService';
+
+// Safe local date string generator (YYYY-MM-DD) avoiding UTC midnight timezone shift
+const getLocalDateString = (offsetDays = 0): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Safe End Date calculator with absolute error guarding
+const calculateEndDateSafely = (startDateStr: string, days: number): string => {
+  if (!startDateStr || typeof startDateStr !== 'string') {
+    return getLocalDateString(days || 5);
+  }
+  try {
+    const parts = startDateStr.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+        const target = new Date(y, m, d);
+        target.setDate(target.getDate() + (Number(days) || 1));
+        const resY = target.getFullYear();
+        const resM = String(target.getMonth() + 1).padStart(2, '0');
+        const resD = String(target.getDate()).padStart(2, '0');
+        return `${resY}-${resM}-${resD}`;
+      }
+    }
+    const parsed = new Date(startDateStr);
+    if (!isNaN(parsed.getTime())) {
+      parsed.setDate(parsed.getDate() + (Number(days) || 1));
+      return parsed.toISOString().split('T')[0];
+    }
+  } catch {
+    // Return safe fallback
+  }
+  return getLocalDateString(days || 5);
+};
+
+// Format standard 24hr or 12hr time string to 12hr "HH:MM AM/PM"
+const formatTo12HourTime = (timeStr: string): string => {
+  if (!timeStr) return '08:00 AM';
+  const clean = timeStr.trim();
+  // Already in 12hr format
+  if (clean.includes('AM') || clean.includes('PM')) {
+    return clean;
+  }
+  // 24hr format "HH:MM"
+  const [hStr, mStr] = clean.split(':');
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h)) h = 8;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  h = h ? h : 12;
+  return `${h.toString().padStart(2, '0')}:${(isNaN(m) ? 0 : m).toString().padStart(2, '0')} ${ampm}`;
+};
 
 export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [reminders, setReminders] = useState<MedicineReminder[]>([
@@ -28,10 +91,10 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       medicineName: 'Pantocid 40',
       dosage: '1 Tablet',
       time: '08:00 AM',
-      frequency: 'Once Daily (Morning)',
+      frequency: 'Once Daily (Morning Empty Stomach)',
       mealTiming: 'Before Meal',
-      startDate: '2026-10-28',
-      endDate: '2026-11-04',
+      startDate: getLocalDateString(-2),
+      endDate: getLocalDateString(5),
       durationDays: 7,
       specificTimes: ['08:00 AM'],
       alarmSoundEnabled: true,
@@ -46,8 +109,8 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       time: '01:30 PM',
       frequency: 'Twice Daily (Morning & Night)',
       mealTiming: 'After Meal',
-      startDate: '2026-10-30',
-      endDate: '2026-11-04',
+      startDate: getLocalDateString(0),
+      endDate: getLocalDateString(5),
       durationDays: 5,
       specificTimes: ['08:30 AM', '01:30 PM', '09:00 PM'],
       alarmSoundEnabled: true,
@@ -62,8 +125,8 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       time: '09:00 PM',
       frequency: 'SOS (Fever > 99.5°F)',
       mealTiming: 'After Meal',
-      startDate: '2026-10-30',
-      endDate: '2026-11-02',
+      startDate: getLocalDateString(0),
+      endDate: getLocalDateString(3),
       durationDays: 3,
       specificTimes: ['09:00 PM'],
       alarmSoundEnabled: true,
@@ -77,10 +140,13 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [newMed, setNewMed] = useState('');
   const [newDosage, setNewDosage] = useState('1 Tablet');
   const [newTime, setNewTime] = useState('08:00 AM');
+  const [customTimeInput, setCustomTimeInput] = useState('');
+  const [useCustomTime, setUseCustomTime] = useState(false);
   const [newMeal, setNewMeal] = useState<'Before Meal' | 'After Meal'>('After Meal');
-  const [newStartDate, setNewStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newStartDate, setNewStartDate] = useState(getLocalDateString(0));
   const [newDurationDays, setNewDurationDays] = useState(5);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   // Alarm Engine State
   const [activeAlarmReminder, setActiveAlarmReminder] = useState<MedicineReminder | null>(null);
@@ -88,42 +154,56 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const alarmIntervalRef = useRef<any>(null);
 
+  const { speak, stop } = useVoice();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
   // Sound Synthesizer for Medical Alarm (Beep-Beep-Beep pattern)
-  const triggerAlarmSound = () => {
+  const triggerAlarmSound = (medName = 'Medicine') => {
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
       const ctx = audioContextRef.current;
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().catch(() => {});
       }
 
       setIsAlarmPlaying(true);
 
       const playBeep = () => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-        osc.frequency.setValueAtTime(1046.5, ctx.currentTime + 0.1); // C6
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.25);
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+          osc.frequency.setValueAtTime(1046.5, ctx.currentTime + 0.1); // C6
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.25);
+        } catch {
+          // oscillator error ignored
+        }
       };
 
-      // Play beeps every 1 second
       playBeep();
       setTimeout(playBeep, 200);
+
       alarmIntervalRef.current = setInterval(() => {
         playBeep();
         setTimeout(playBeep, 200);
       }, 1400);
+
+      // Speak aloud medicine reminder prompt
+      const spokenMsg =
+        lang === 'hi'
+          ? `दवा का समय हो गया है। कृपया अपनी दवा ${medName} समय पर लें।`
+          : `Medicine reminder: It is time to take your prescribed dose of ${medName}.`;
+      setTimeout(() => {
+        speak(spokenMsg, lang);
+      }, 600);
     } catch {
       // Audio not permitted
     }
@@ -135,6 +215,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       alarmIntervalRef.current = null;
     }
     setIsAlarmPlaying(false);
+    stop();
   };
 
   // Browser Notification helper
@@ -152,7 +233,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
               body: `Time to take ${med.dosage} (${med.mealTiming}).`,
             });
           }
-        });
+        }).catch(() => {});
       }
     }
   };
@@ -180,7 +261,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
 
       if (match && !activeAlarmReminder) {
         setActiveAlarmReminder(match);
-        triggerAlarmSound();
+        triggerAlarmSound(match.medicineName);
         sendBrowserNotification(match);
       }
     };
@@ -195,34 +276,31 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   // Request notification permission on mount
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      Notification.requestPermission().catch(() => {});
     }
   }, []);
-
-  // Compute calculated End Date based on Start Date + Duration in Days
-  const calculateEndDate = (startDateStr: string, days: number): string => {
-    const start = new Date(startDateStr);
-    start.setDate(start.getDate() + days);
-    return start.toISOString().split('T')[0];
-  };
 
   const handleAddReminder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMed.trim()) return;
 
-    const endDate = calculateEndDate(newStartDate, newDurationDays);
+    const chosenTime = useCustomTime && customTimeInput.trim()
+      ? formatTo12HourTime(customTimeInput)
+      : newTime;
+
+    const endDate = calculateEndDateSafely(newStartDate, newDurationDays);
 
     const reminder: MedicineReminder = {
       id: `rem-${Date.now()}`,
-      medicineName: newMed,
-      dosage: newDosage,
-      time: newTime,
+      medicineName: newMed.trim(),
+      dosage: newDosage.trim() || '1 Tablet',
+      time: chosenTime,
       frequency: `${newDurationDays} Days Course`,
       mealTiming: newMeal,
       startDate: newStartDate,
       endDate: endDate,
       durationDays: newDurationDays,
-      specificTimes: [newTime],
+      specificTimes: [chosenTime],
       alarmSoundEnabled: true,
       notificationEnabled: true,
       active: true,
@@ -232,6 +310,8 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
     setReminders([reminder, ...reminders]);
     setNewMed('');
     setShowAddForm(false);
+    setStatusMessage(`Alarm scheduled for ${reminder.medicineName} at ${chosenTime}!`);
+    setTimeout(() => setStatusMessage(null), 4000);
   };
 
   const toggleTaken = (id: string) => {
@@ -244,11 +324,28 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
     setReminders((prev) => prev.filter((r) => r.id !== id));
   };
 
-  // Test Alarm Button for instant demonstration
-  const handleTestAlarm = (rem: MedicineReminder) => {
-    setActiveAlarmReminder(rem);
-    triggerAlarmSound();
-    sendBrowserNotification(rem);
+  // Test Alarm Button for instant demonstration (Safe even if list empty)
+  const handleTestAlarm = (rem?: MedicineReminder) => {
+    const targetRem: MedicineReminder = rem || reminders[0] || {
+      id: 'test-1',
+      medicineName: 'Paracetamol 650mg',
+      dosage: '1 Tablet',
+      time: '08:00 AM',
+      frequency: 'SOS (Fever)',
+      mealTiming: 'After Meal',
+      startDate: getLocalDateString(0),
+      endDate: getLocalDateString(3),
+      durationDays: 3,
+      specificTimes: ['08:00 AM'],
+      alarmSoundEnabled: true,
+      notificationEnabled: true,
+      active: true,
+      taken: false,
+    };
+
+    setActiveAlarmReminder(targetRem);
+    triggerAlarmSound(targetRem.medicineName);
+    sendBrowserNotification(targetRem);
   };
 
   const handleDismissAlarm = (markAsTaken = false) => {
@@ -298,6 +395,19 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
           </button>
         </div>
       </div>
+
+      {/* Success / Alert Toast */}
+      {statusMessage && (
+        <div className="bg-emerald-600 text-white px-4 py-3 rounded-xl flex items-center justify-between text-xs font-semibold shadow-md animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            <span>{statusMessage}</span>
+          </div>
+          <button onClick={() => setStatusMessage(null)} className="text-emerald-100 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* ACTIVE MEDICATION ALARM RINGING MODAL */}
       {activeAlarmReminder && (
@@ -402,6 +512,25 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
             </button>
           </div>
 
+          {/* Quick Medicine Suggestions */}
+          <div>
+            <span className="text-[11px] text-slate-400 font-bold block mb-1">Quick Presets:</span>
+            <div className="flex flex-wrap gap-1.5">
+              {['Dolo 650 (Paracetamol)', 'Pantocid 40', 'Augmentin 625 Duo', 'Telma 40', 'Becosules Z'].map(
+                (preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setNewMed(preset)}
+                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 hover:text-white rounded-lg text-[11px] font-medium transition cursor-pointer text-slate-700 dark:text-slate-300"
+                  >
+                    + {preset}
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
             {/* Medicine Name */}
             <div>
@@ -433,23 +562,43 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
               />
             </div>
 
-            {/* Time */}
+            {/* Daily Time Picker (Preset or Custom) */}
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Scheduled Daily Time (Alarm) *
-              </label>
-              <select
-                value={newTime}
-                onChange={(e) => setNewTime(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="07:00 AM">07:00 AM (Early Morning)</option>
-                <option value="08:00 AM">08:00 AM (Breakfast)</option>
-                <option value="01:30 PM">01:30 PM (Lunch)</option>
-                <option value="05:00 PM">05:00 PM (Tea/Evening)</option>
-                <option value="08:30 PM">08:30 PM (Dinner)</option>
-                <option value="10:00 PM">10:00 PM (Bedtime)</option>
-              </select>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                  Scheduled Daily Time *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setUseCustomTime(!useCustomTime)}
+                  className="text-[10px] text-blue-600 hover:underline font-bold"
+                >
+                  {useCustomTime ? 'Use Presets' : 'Custom Time'}
+                </button>
+              </div>
+
+              {useCustomTime ? (
+                <input
+                  type="time"
+                  required
+                  value={customTimeInput}
+                  onChange={(e) => setCustomTimeInput(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              ) : (
+                <select
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="07:00 AM">07:00 AM (Early Morning)</option>
+                  <option value="08:00 AM">08:00 AM (Breakfast)</option>
+                  <option value="01:30 PM">01:30 PM (Lunch)</option>
+                  <option value="05:00 PM">05:00 PM (Tea/Evening)</option>
+                  <option value="08:30 PM">08:30 PM (Dinner)</option>
+                  <option value="10:00 PM">10:00 PM (Bedtime)</option>
+                </select>
+              )}
             </div>
 
             {/* Start Date */}
@@ -502,28 +651,30 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
             </div>
           </div>
 
-          <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-900/50 flex items-center justify-between text-xs">
+          <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-900/50 flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="text-slate-700 dark:text-slate-300">
               📅 Calculated Schedule: <strong>{newStartDate}</strong> to{' '}
               <strong className="text-blue-600 dark:text-blue-400">
-                {calculateEndDate(newStartDate, newDurationDays)}
+                {calculateEndDateSafely(newStartDate, newDurationDays)}
               </strong>{' '}
               ({newDurationDays} days total)
             </span>
-            <span className="text-emerald-600 font-bold">✓ Audio Alarm Enabled</span>
+            <span className="text-emerald-600 font-bold flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5" /> Audio Alarm & Notifications Active
+            </span>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold hover:bg-slate-100 cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md cursor-pointer transition active:scale-95"
             >
               Save Schedule & Set Alarm
             </button>
