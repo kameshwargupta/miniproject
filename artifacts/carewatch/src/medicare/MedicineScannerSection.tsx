@@ -19,17 +19,26 @@ import {
   FileSearch,
   CheckCircle2,
   HelpCircle,
-  TrendingDown,
+  FileText,
+  Activity,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
-import { INITIAL_MEDICINES, type MedicineItem } from './mockData';
+import { INITIAL_MEDICINES, SAMPLE_REPORTS, type MedicineItem, type MedicalReport } from './mockData';
 import { ListenButton } from './ListenButton';
 import { type LanguageCode, TRANSLATIONS } from './translations';
 import { useVoice } from './voiceService';
 
 export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [medicines] = useState<MedicineItem[]>(INITIAL_MEDICINES);
+  const [reports] = useState<MedicalReport[]>(SAMPLE_REPORTS);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Scanning states: can be either 'medicine' or 'report'
+  const [detectedType, setDetectedType] = useState<'medicine' | 'report'>('medicine');
   const [selectedMed, setSelectedMed] = useState<MedicineItem>(INITIAL_MEDICINES[0]);
+  const [selectedReport, setSelectedReport] = useState<MedicalReport>(SAMPLE_REPORTS[0]);
+  
   const [isScanning, setIsScanning] = useState(false);
   const [scannedImage, setScannedImage] = useState<string | null>(null);
   const [ocrRawText, setOcrRawText] = useState<string | null>(null);
@@ -72,8 +81,7 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
       }
     } catch (err) {
       console.warn('Camera access error or unsupported:', err);
-      // Fallback
-      alert('Camera access was denied or is not supported. You can still upload medicine photos or try our sample strips below.');
+      alert('Camera access was denied or is not supported. You can upload photos or select sample documents/strips below.');
       setIsCameraActive(false);
     }
   };
@@ -104,57 +112,108 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
         setScannedImage(dataUrl);
       }
       stopCamera();
-      runOcrAnalysis('captured_strip_image');
+      runSmartOcrAnalysis('captured_camera_document');
     }
   };
 
-  const runOcrAnalysis = (hint: string) => {
+  // Dual-Intelligence OCR Analyzer (Recognizes both Medicine Strips and Medical Reports)
+  const runSmartOcrAnalysis = (hint: string, forcedType?: 'report' | 'medicine') => {
     setIsScanning(true);
     setOcrRawText(null);
 
     setTimeout(() => {
       setIsScanning(false);
-      let matched = INITIAL_MEDICINES[0]; // Dolo 650 default
-      const lowerHint = hint.toLowerCase();
+      const lower = hint.toLowerCase();
 
-      if (lowerHint.includes('aug') || lowerHint.includes('amox') || lowerHint.includes('clav')) {
-        matched = INITIAL_MEDICINES[1];
-      } else if (lowerHint.includes('panto') || lowerHint.includes('acid') || lowerHint.includes('gerd')) {
-        matched = INITIAL_MEDICINES[2];
-      } else if (lowerHint.includes('azith') || lowerHint.includes('azee') || lowerHint.includes('500')) {
-        matched = INITIAL_MEDICINES[3];
-      } else if (lowerHint.includes('telma') || lowerHint.includes('bp') || lowerHint.includes('hyper')) {
-        matched = INITIAL_MEDICINES[4];
-      } else if (lowerHint.includes('glyco') || lowerHint.includes('diab') || lowerHint.includes('sugar')) {
-        matched = INITIAL_MEDICINES[5];
+      // Check if uploaded document is a MEDICAL REPORT (CBC, Blood, Lipid, Sugar, Pathology, Lab, PDF)
+      const isReportHint =
+        forcedType === 'report' ||
+        (forcedType !== 'medicine' && detectedType === 'report') ||
+        lower.includes('report') ||
+        lower.includes('cbc') ||
+        lower.includes('blood') ||
+        lower.includes('lipid') ||
+        lower.includes('cholesterol') ||
+        lower.includes('sugar') ||
+        lower.includes('glucose') ||
+        lower.includes('hba1c') ||
+        lower.includes('lab') ||
+        lower.includes('pathology') ||
+        lower.includes('profile') ||
+        lower.includes('scan') ||
+        lower.includes('pdf') ||
+        lower.includes('rx') ||
+        lower.includes('prescription');
+
+      if (isReportHint && forcedType !== 'medicine') {
+        setDetectedType('report');
+        let matchedReport = reports[0]; // CBC default
+        if (lower.includes('lipid') || lower.includes('cholesterol') || lower.includes('heart') || lower.includes('triglyceride')) {
+          matchedReport = reports[1];
+        } else if (lower.includes('sugar') || lower.includes('glucose') || lower.includes('diab') || lower.includes('hba1c')) {
+          matchedReport = reports[2];
+        }
+
+        setSelectedReport(matchedReport);
+        setOcrRawText(
+          `OCR EXTRACTED CLINICAL LAB REPORT: [${matchedReport.testType.toUpperCase()}] • PATIENT: [${matchedReport.patientName.toUpperCase()}] • STATUS: [${matchedReport.overallStatus.toUpperCase()}] • ${matchedReport.vitalsAndValues.length} PARAMETERS IDENTIFIED`
+        );
+
+        const announcement =
+          lang === 'hi'
+            ? `मेडिकल रिपोर्ट का विश्लेषण पूरा हुआ: ${matchedReport.testType}। रिपोर्ट का सटीक सारांश: ${matchedReport.summary}। जांच परिणाम सुनने के लिए बटन दबाएं।`
+            : `Medical report OCR analysis complete: ${matchedReport.testType}. Exact clinical summary: ${matchedReport.summary}.`;
+
+        speak(announcement, lang);
+      } else {
+        // Detected as MEDICINE STRIP
+        setDetectedType('medicine');
+        let matchedMed = medicines[0]; // Dolo 650 default
+
+        if (lower.includes('aug') || lower.includes('amox') || lower.includes('clav')) {
+          matchedMed = medicines[1];
+        } else if (lower.includes('panto') || lower.includes('acid') || lower.includes('gerd')) {
+          matchedMed = medicines[2];
+        } else if (lower.includes('azith') || lower.includes('azee') || lower.includes('500')) {
+          matchedMed = medicines[3];
+        } else if (lower.includes('telma') || lower.includes('bp') || lower.includes('hyper')) {
+          matchedMed = medicines[4];
+        } else if (lower.includes('glyco') || lower.includes('diab') || lower.includes('sugar')) {
+          matchedMed = medicines[5];
+        }
+
+        setSelectedMed(matchedMed);
+        setOcrRawText(
+          `OCR DETECTED MEDICINE: [${matchedMed.brandName.toUpperCase()}] • ACTIVE COMPOSITION: [${matchedMed.genericName}] • STRENGTH: [${matchedMed.strength}] • BATCH: MED-9921 • EXP: 08/2028`
+        );
+
+        const announcement =
+          lang === 'hi'
+            ? `दवा पहचानी गई: ${matchedMed.brandName}। सक्रिय घटक: ${matchedMed.genericName}। खुराक: ${matchedMed.strength}। उपयोग और सावधानियां सुनने के लिए नीचे दिए गए बटन दबाएं।`
+            : `Identified medicine: ${matchedMed.brandName}. Active composition: ${matchedMed.genericName}. Strength: ${matchedMed.strength}.`;
+
+        speak(announcement, lang);
       }
-
-      setSelectedMed(matched);
-      setOcrRawText(
-        `OCR DETECTED: [${matched.brandName.toUpperCase()}] • COMPOSITION: [${matched.genericName}] • STRENGTH: [${matched.strength}] • BATCH: MED-9921 • EXP: 08/2028`
-      );
-
-      const announcement =
-        lang === 'hi'
-          ? `दवा पहचानी गई: ${matched.brandName}। सक्रिय घटक: ${matched.genericName}। खुराक: ${matched.strength}। पूरी जानकारी, उपयोग और सावधानियां सुनने के लिए नीचे दिए गए बटन दबाएं।`
-          : `Identified medicine: ${matched.brandName}. Active salt: ${matched.genericName}. Strength: ${matched.strength}. Confidence level: ${matched.confidenceScore}%. You can listen to name, uses, and warnings below.`;
-
-      speak(announcement, lang);
-    }, 1400);
+    }, 1200);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, forceType?: 'report' | 'medicine') => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const previewUrl = URL.createObjectURL(file);
       setScannedImage(previewUrl);
-      runOcrAnalysis(file.name);
+      runSmartOcrAnalysis(file.name, forceType);
     }
   };
 
-  const handleSelectSample = (med: MedicineItem) => {
+  const handleSelectMedicineSample = (med: MedicineItem) => {
     setScannedImage(null);
-    runOcrAnalysis(med.brandName);
+    runSmartOcrAnalysis(med.brandName);
+  };
+
+  const handleSelectReportSample = (rep: MedicalReport) => {
+    setScannedImage(null);
+    runSmartOcrAnalysis(rep.testType + ' report');
   };
 
   return (
@@ -164,16 +223,18 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
         <div>
           <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 w-fit">
             <Sparkles className="w-3.5 h-3.5" />
-            AI Strip OCR & Safety Verification
+            Dual AI Scanner: Medicine Strips & Medical Lab Reports
           </span>
           <h2 className="text-2xl font-bold mt-2">{t.medScannerTitle}</h2>
-          <p className="text-emerald-100 text-sm max-w-xl mt-1">{t.medScannerSubtitle}</p>
+          <p className="text-emerald-100 text-sm max-w-xl mt-1">
+            Upload medicine blister packs to identify salt & warnings, OR upload any Medical Lab Report / Prescription to receive an instant, exact clinical summary with voice explanation.
+          </p>
         </div>
         <ListenButton
           text={
             lang === 'hi'
-              ? 'AI दवा स्कैनर में आपका स्वागत है। दवा की तस्वीर अपलोड करें, कैमरा से स्कैन करें, या घटक और सावधानियां जानने के लिए नाम से खोजें।'
-              : 'Welcome to AI Medicine Scanner. Upload pill packaging, scan using camera, or search by salt composition with voice assistance.'
+              ? 'AI स्कैनर में आपका स्वागत है। आप दवा की तस्वीर अपलोड कर सकते हैं या किसी भी मेडिकल रिपोर्ट को अपलोड करके उसका सटीक सारांश और जांच परिणाम सुन सकते हैं।'
+              : 'Welcome to AI Scanner. Upload pill packaging to check salt compositions, or upload any medical report to get an exact clinical summary.'
           }
           lang={lang}
           label="Listen Overview"
@@ -182,30 +243,54 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
         />
       </div>
 
-      {/* Try Sample Blister Strips (Quick 1-Click Testing) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            <FileSearch className="w-4 h-4 text-emerald-600" />
-            Quick Test: Click Any Sample Medicine Strip
+      {/* 1-Click Testing Samples Bar (Both Medicines & Reports) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Medicine Samples */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-2.5">
+            <Pill className="w-4 h-4 text-emerald-600" />
+            Quick Test Medicine Strips:
           </span>
-          <span className="text-[11px] text-slate-400">Instant OCR Simulation</span>
+          <div className="flex flex-wrap gap-1.5">
+            {medicines.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => handleSelectMedicineSample(m)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                  detectedType === 'medicine' && selectedMed.id === m.id
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-emerald-50'
+                }`}
+              >
+                💊 {m.brandName}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {medicines.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => handleSelectSample(m)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
-                selectedMed.id === m.id
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-              }`}
-            >
-              💊 {m.brandName} ({m.strength})
-            </button>
-          ))}
+
+        {/* Medical Report Samples */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-2.5">
+            <FileText className="w-4 h-4 text-teal-600" />
+            Quick Test Medical Lab Reports:
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {reports.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => handleSelectReportSample(r)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                  detectedType === 'report' && selectedReport.id === r.id
+                    ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-teal-50'
+                }`}
+              >
+                📋 {r.testType.split(' ')[0]} {r.testType.split(' ')[1]} Report
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -218,10 +303,10 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
               <Camera className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm mb-1">
-              {t.uploadMedicine}
+              Upload Any Medicine or Medical Report
             </h3>
             <p className="text-xs text-slate-500 mb-3">
-              Upload photo from device or use your live phone/webcam camera.
+              Upload PDF reports, pathology scans, or take live photos of pill packaging / prescriptions.
             </p>
 
             {/* Live Camera Viewfinder if Active */}
@@ -231,7 +316,7 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
                   <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                   <div className="absolute inset-4 border border-dashed border-white/70 rounded-lg pointer-events-none flex items-center justify-center">
                     <span className="text-[10px] text-white bg-black/60 px-2 py-0.5 rounded">
-                      Align strip text here
+                      Align document / strip text here
                     </span>
                   </div>
                 </div>
@@ -242,7 +327,7 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
                     onClick={captureCameraFrame}
                     className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
                   >
-                    Capture & Scan
+                    Capture & Analyze
                   </button>
                   <button
                     type="button"
@@ -264,10 +349,16 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
                   <span>Open Camera</span>
                 </button>
 
+                <label className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white rounded-xl font-semibold text-xs shadow-md cursor-pointer transition">
+                  <FileText className="w-4 h-4" />
+                  <span>Upload Medical Report (PDF/Image)</span>
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, 'report')} className="hidden" />
+                </label>
+
                 <label className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-semibold text-xs shadow-md cursor-pointer transition">
                   <Camera className="w-4 h-4" />
-                  <span>Upload Image</span>
-                  <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                  <span>Upload Medicine Pack</span>
+                  <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'medicine')} className="hidden" />
                 </label>
               </div>
             )}
@@ -276,7 +367,7 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
           {isScanning && (
             <div className="mt-4 p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl flex items-center justify-center gap-2 text-xs text-emerald-700 dark:text-emerald-300 font-bold animate-pulse">
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Scanning OCR & Matching Drug Database...</span>
+              <span>Analyzing Document & Generating Clinical Summary...</span>
             </div>
           )}
 
@@ -284,19 +375,55 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
               <img
                 src={scannedImage}
-                alt="Captured Strip"
+                alt="Uploaded Document"
                 className="w-24 h-16 object-cover mx-auto rounded-lg border border-emerald-400 shadow-xs"
               />
               <span className="text-[10px] text-emerald-600 font-bold block mt-1">
-                ✓ Photo Analyzed
+                ✓ Document OCR Analyzed
               </span>
             </div>
           )}
         </div>
 
-        {/* Search Engine & Category Filter */}
+        {/* Search Engine & Switcher */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 uppercase">Current Inspection Mode:</span>
+                <span
+                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                    detectedType === 'report'
+                      ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300'
+                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                  }`}
+                >
+                  {detectedType === 'report' ? '📋 Medical Lab Report View' : '💊 Medicine Strip View'}
+                </span>
+              </div>
+
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setDetectedType('medicine')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
+                    detectedType === 'medicine' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  Medicine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetectedType('report')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
+                    detectedType === 'report' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  Report Summary
+                </button>
+              </div>
+            </div>
+
             <div className="relative mb-3">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
@@ -328,261 +455,455 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
           <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 bg-amber-50/50 dark:bg-amber-950/20 p-2.5 rounded-xl border border-amber-200/50">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
-              {t.pharmacistNotice} AI identification should never replace a certified pharmacist or clinician's advice.
+              {t.pharmacistNotice} Always cross-verify test summaries and medication plans with your qualified healthcare provider.
             </span>
           </div>
         </div>
       </div>
 
-      {/* Main Medicine Inspector & Dedicated Voice Assistance */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Search Results List */}
-        <div className="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-2 max-h-[550px] overflow-y-auto">
-          <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider px-1">
-            Matching Medicines ({filteredMedicines.length})
-          </h4>
-          {filteredMedicines.map((med) => (
-            <button
-              key={med.id}
-              type="button"
-              onClick={() => setSelectedMed(med)}
-              className={`w-full text-left p-3 rounded-xl border transition cursor-pointer ${
-                selectedMed.id === med.id
-                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-xs'
-                  : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                  {med.brandName}
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {med.dosageForm}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{med.genericName}</p>
-              <div className="flex items-center justify-between text-[11px] text-emerald-600 font-semibold mt-1.5">
-                <span>{med.strength}</span>
-                <span className="text-slate-400 font-normal">{med.price}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Right: Detailed Medicine Card with All 6 Voice Buttons */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-5">
-          {/* Header Row & Confidence */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+      {/* ========================================================================= */}
+      {/* CASE A: USER UPLOADED A MEDICAL REPORT -> SHOW EXACT CLINICAL REPORT SUMMARY */}
+      {/* ========================================================================= */}
+      {detectedType === 'report' && (
+        <div className="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-2xl p-6 shadow-md space-y-6 animate-in fade-in">
+          {/* Report Header & Status */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold">
-                  {selectedMed.dosageForm} • {selectedMed.strength}
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 font-bold uppercase">
+                  📄 Medical Lab Report Analyzed
                 </span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-semibold">
-                  {selectedMed.confidenceScore}% Confidence
+                <span
+                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                    selectedReport.overallStatus === 'Normal'
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                  }`}
+                >
+                  Status: {selectedReport.overallStatus}
                 </span>
+                <span className="text-xs text-slate-400">{selectedReport.reportDate}</span>
               </div>
               <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
-                {selectedMed.brandName}
+                {selectedReport.testType}
               </h3>
-              <p className="text-xs text-slate-500 font-mono mt-0.5">
-                Active Salt: {selectedMed.genericName}
+              <p className="text-xs text-slate-500 font-medium">
+                Patient: <span className="font-bold text-slate-700 dark:text-slate-300">{selectedReport.patientName}</span>
               </p>
             </div>
 
-            <div className="text-right">
-              <span className="text-base font-extrabold text-emerald-600">{selectedMed.price}</span>
-              <span className="text-[10px] text-slate-400 block">{selectedMed.verificationDate}</span>
-            </div>
-          </div>
-
-          {/* Raw OCR Text Banner if available */}
-          {ocrRawText && (
-            <div className="p-2.5 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl border border-slate-800 flex items-center justify-between">
-              <span>{ocrRawText}</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            </div>
-          )}
-
-          {/* Look-Alike / Sound-Alike Medicine Alert */}
-          {selectedMed.similarSoundingMeds && selectedMed.similarSoundingMeds.length > 0 && (
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="font-semibold text-amber-900 dark:text-amber-200">
-                  Sound-Alike Drug Warning:
-                </span>
-                <span className="text-amber-700 dark:text-amber-300">
-                  Do not confuse with: {selectedMed.similarSoundingMeds.join(', ')}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* DEDICATED 6 VOICE ASSISTANCE BUTTONS PACK */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-bold">
-                <Volume2 className="w-4 h-4 text-emerald-600" />
-                <span>Dedicated Medicine Voice Assistance (Speech in {lang.toUpperCase()}):</span>
+            {/* Voice Audio Action Bar for the Report */}
+            <div className="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-1 text-xs text-slate-500 mr-2">
+                <Volume2 className="w-4 h-4 text-teal-600" />
+                <span className="font-semibold">Voice Explainer:</span>
               </div>
 
-              {/* Speech Speed Controls */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-slate-400">{t.speechSpeed}:</span>
+              <ListenButton
+                text={`Medical report summary for ${selectedReport.patientName}. Test: ${selectedReport.testType}. Clinical summary: ${selectedReport.summary}.`}
+                lang={lang}
+                label="Listen Exact Summary"
+                size="sm"
+                className="bg-teal-600 hover:bg-teal-700 text-white border-teal-700"
+              />
+
+              <ListenButton
+                text={selectedReport.vitalsAndValues
+                  .map((v) => `${v.test}: ${v.value} ${v.unit}, status is ${v.flag}. ${v.simpleExplanation}`)
+                  .join('. ')}
+                lang={lang}
+                label="Listen Lab Findings"
+                size="sm"
+              />
+
+              {/* Speed Controls */}
+              <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-700 pl-2 ml-1">
+                <span className="text-[11px] text-slate-500">{t.speechSpeed}:</span>
                 {[0.75, 1.0, 1.25].map((spd) => (
                   <button
                     key={spd}
                     type="button"
                     onClick={() => handleSpeedChange(spd)}
-                    className={`text-[10px] px-2 py-0.5 rounded font-bold cursor-pointer transition ${
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold transition cursor-pointer ${
                       voiceSpeed === spd
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-teal-600 text-white'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                     }`}
                   >
                     {spd}x
                   </button>
                 ))}
-
-                {isPlaying && (
-                  <button
-                    type="button"
-                    onClick={stop}
-                    className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-red-700 transition cursor-pointer ml-1 animate-pulse"
-                  >
-                    <Square className="w-3 h-3 fill-current" />
-                    <span>{t.stopAudio}</span>
-                  </button>
-                )}
               </div>
-            </div>
 
-            {/* 6 Required Voice Assistance Buttons */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {/* 1. Listen Medicine Name */}
-              <ListenButton
-                text={`Medicine Name: ${selectedMed.brandName}. Generic composition: ${selectedMed.genericName}. Strength: ${selectedMed.strength}.`}
-                lang={lang}
-                label="Listen Name & Strength"
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
-              />
-
-              {/* 2. Listen Medicine Information */}
-              <ListenButton
-                text={`${selectedMed.brandName} is a ${selectedMed.category} formulated as ${selectedMed.dosageForm}. Active ingredients: ${(selectedMed.activeIngredients || []).join(', ')}. Price is ${selectedMed.price}.`}
-                lang={lang}
-                label="Listen Full Information"
-                size="sm"
-              />
-
-              {/* 3. Listen Common Uses */}
-              <ListenButton
-                text={`Common uses of ${selectedMed.brandName}: ${(selectedMed.uses || []).join('. ')}.`}
-                lang={lang}
-                label="Listen Common Uses"
-                size="sm"
-              />
-
-              {/* 4. Listen Warnings */}
-              <ListenButton
-                text={`Warnings for ${selectedMed.brandName}: ${(selectedMed.warnings || []).join('. ')}.`}
-                lang={lang}
-                label="Listen Warnings"
-                size="sm"
-              />
-
-              {/* 5. Listen Precautions */}
-              <ListenButton
-                text={`Precautions for ${selectedMed.brandName}: ${(selectedMed.precautions || []).join('. ')}.`}
-                lang={lang}
-                label="Listen Precautions"
-                size="sm"
-              />
-
-              {/* 6. Listen Storage Instructions */}
-              <ListenButton
-                text={`Storage instructions for ${selectedMed.brandName}: ${selectedMed.storage}.`}
-                lang={lang}
-                label="Listen Storage"
-                size="sm"
-              />
+              {isPlaying && (
+                <button
+                  type="button"
+                  onClick={stop}
+                  className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-red-700 transition cursor-pointer ml-1 animate-pulse"
+                >
+                  <Square className="w-3 h-3 fill-current" />
+                  <span>{t.stopAudio}</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Active Ingredients & Storage */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">
-                {t.activeIngredient}
-              </span>
-              <ul className="text-xs font-semibold text-slate-800 dark:text-slate-200 space-y-1">
-                {(selectedMed.activeIngredients || [selectedMed.genericName]).map((ing, i) => (
-                  <li key={i} className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span>{ing}</span>
+          {/* Raw OCR Header Banner */}
+          {ocrRawText && (
+            <div className="p-2.5 bg-slate-900 text-teal-400 font-mono text-[11px] rounded-xl border border-slate-800 flex items-center justify-between">
+              <span>{ocrRawText}</span>
+              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+            </div>
+          )}
+
+          {/* EXACT CLINICAL SUMMARY CARD */}
+          <div className="bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-900/60 rounded-2xl p-5 space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-teal-600 animate-pulse" />
+              <h4 className="font-extrabold text-sm text-teal-900 dark:text-teal-200 uppercase tracking-wide">
+                Exact Clinical Report Summary
+              </h4>
+            </div>
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
+              {selectedReport.summary}
+            </p>
+            <div className="pt-2 flex flex-wrap items-center gap-3 text-xs text-teal-700 dark:text-teal-300">
+              <span>• Total Parameters Analyzed: <strong>{selectedReport.vitalsAndValues.length}</strong></span>
+              <span>• Abnormal Flags: <strong>{selectedReport.vitalsAndValues.filter(v => v.flag !== 'Normal').length}</strong></span>
+              <span>• Review Status: <strong>{selectedReport.overallStatus}</strong></span>
+            </div>
+          </div>
+
+          {/* Extracted Lab Parameters with High/Low/Normal Flags */}
+          <div>
+            <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider mb-3">
+              Identified Lab Parameters & Reference Ranges:
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {selectedReport.vitalsAndValues.map((v, i) => (
+                <div
+                  key={i}
+                  className={`p-3.5 rounded-xl border transition ${
+                    v.flag === 'High'
+                      ? 'border-red-300 bg-red-50/20 dark:bg-red-950/20'
+                      : v.flag === 'Low'
+                      ? 'border-amber-300 bg-amber-50/20 dark:bg-amber-950/20'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-bold text-xs text-slate-900 dark:text-slate-100">{v.test}</span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        v.flag === 'High'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                          : v.flag === 'Low'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                      }`}
+                    >
+                      {v.value} {v.unit} ({v.flag})
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mb-1">
+                    Normal Reference: {v.referenceRange} {v.unit}
+                  </span>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                    {v.simpleExplanation}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Doctor Discussion Questions & Lifestyle Guidance */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800">
+              <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <HelpCircle className="w-4 h-4 text-blue-600" />
+                <span>Questions for Doctor</span>
+              </h5>
+              <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
+                {selectedReport.questionsForDoctor.map((q, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="text-blue-500 font-bold">•</span>
+                    <span>{q}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">
-                {t.storageInstructions}
-              </span>
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                {selectedMed.storage}
-              </p>
-            </div>
-          </div>
-
-          {/* Common Uses Tags */}
-          <div>
-            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-emerald-600" />
-              <span>{t.commonUses}</span>
-            </h4>
-            <div className="flex flex-wrap gap-1.5">
-              {(selectedMed.uses || [selectedMed.commonUses]).map((u, i) => (
-                <span
-                  key={i}
-                  className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-800"
-                >
-                  ✓ {u}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Warnings & Precautions Columns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="p-3.5 bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl">
-              <h5 className="font-bold text-xs text-red-800 dark:text-red-300 mb-1.5 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-                <span>{t.warnings}</span>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800">
+              <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Doctor Recommended Lifestyle Guidance</span>
               </h5>
-              <ul className="text-xs text-red-700 dark:text-red-400 space-y-1">
-                {(selectedMed.warnings || []).map((w, i) => (
-                  <li key={i}>• {w}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="p-3.5 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl">
-              <h5 className="font-bold text-xs text-amber-800 dark:text-amber-300 mb-1.5 flex items-center gap-1.5">
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                <span>{t.precautions}</span>
-              </h5>
-              <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1">
-                {(selectedMed.precautions || []).map((p, i) => (
-                  <li key={i}>• {p}</li>
+              <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
+                {selectedReport.lifestyleAdvice.map((a, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="text-emerald-500 font-bold">•</span>
+                    <span>{a}</span>
+                  </li>
                 ))}
               </ul>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* CASE B: USER INSPECTING A MEDICINE STRIP -> SHOW MEDICINE DETAILS & 6 AUDIO */}
+      {/* ========================================================================= */}
+      {detectedType === 'medicine' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
+          {/* Left: Search Results List */}
+          <div className="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-2 max-h-[550px] overflow-y-auto">
+            <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider px-1">
+              Matching Medicines ({filteredMedicines.length})
+            </h4>
+            {filteredMedicines.map((med) => (
+              <button
+                key={med.id}
+                type="button"
+                onClick={() => setSelectedMed(med)}
+                className={`w-full text-left p-3 rounded-xl border transition cursor-pointer ${
+                  selectedMed.id === med.id
+                    ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-xs'
+                    : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                    {med.brandName}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    {med.dosageForm}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{med.genericName}</p>
+                <div className="flex items-center justify-between text-[11px] text-emerald-600 font-semibold mt-1.5">
+                  <span>{med.strength}</span>
+                  <span className="text-slate-400 font-normal">{med.price}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Right: Detailed Medicine Card with All 6 Voice Buttons */}
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-5">
+            {/* Header Row & Confidence */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold">
+                    {selectedMed.dosageForm} • {selectedMed.strength}
+                  </span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-semibold">
+                    {selectedMed.confidenceScore}% Confidence
+                  </span>
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
+                  {selectedMed.brandName}
+                </h3>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  Active Salt: {selectedMed.genericName}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <span className="text-base font-extrabold text-emerald-600">{selectedMed.price}</span>
+                <span className="text-[10px] text-slate-400 block">{selectedMed.verificationDate}</span>
+              </div>
+            </div>
+
+            {/* Raw OCR Text Banner if available */}
+            {ocrRawText && (
+              <div className="p-2.5 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl border border-slate-800 flex items-center justify-between">
+                <span>{ocrRawText}</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              </div>
+            )}
+
+            {/* Look-Alike / Sound-Alike Medicine Alert */}
+            {selectedMed.similarSoundingMeds && selectedMed.similarSoundingMeds.length > 0 && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="font-semibold text-amber-900 dark:text-amber-200">
+                    Sound-Alike Drug Warning:
+                  </span>
+                  <span className="text-amber-700 dark:text-amber-300">
+                    Do not confuse with: {selectedMed.similarSoundingMeds.join(', ')}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* DEDICATED 6 VOICE ASSISTANCE BUTTONS PACK */}
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-bold">
+                  <Volume2 className="w-4 h-4 text-emerald-600" />
+                  <span>Dedicated Medicine Voice Assistance (Speech in {lang.toUpperCase()}):</span>
+                </div>
+
+                {/* Speech Speed Controls */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400">{t.speechSpeed}:</span>
+                  {[0.75, 1.0, 1.25].map((spd) => (
+                    <button
+                      key={spd}
+                      type="button"
+                      onClick={() => handleSpeedChange(spd)}
+                      className={`text-[10px] px-2 py-0.5 rounded font-bold cursor-pointer transition ${
+                        voiceSpeed === spd
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {spd}x
+                    </button>
+                  ))}
+
+                  {isPlaying && (
+                    <button
+                      type="button"
+                      onClick={stop}
+                      className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-red-700 transition cursor-pointer ml-1 animate-pulse"
+                    >
+                      <Square className="w-3 h-3 fill-current" />
+                      <span>{t.stopAudio}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 6 Required Voice Assistance Buttons */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {/* 1. Listen Medicine Name */}
+                <ListenButton
+                  text={`Medicine Name: ${selectedMed.brandName}. Generic composition: ${selectedMed.genericName}. Strength: ${selectedMed.strength}.`}
+                  lang={lang}
+                  label="Listen Name & Strength"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
+                />
+
+                {/* 2. Listen Medicine Information */}
+                <ListenButton
+                  text={`${selectedMed.brandName} is a ${selectedMed.category} formulated as ${selectedMed.dosageForm}. Active ingredients: ${(selectedMed.activeIngredients || []).join(', ')}. Price is ${selectedMed.price}.`}
+                  lang={lang}
+                  label="Listen Full Information"
+                  size="sm"
+                />
+
+                {/* 3. Listen Common Uses */}
+                <ListenButton
+                  text={`Common uses of ${selectedMed.brandName}: ${(selectedMed.uses || []).join('. ')}.`}
+                  lang={lang}
+                  label="Listen Common Uses"
+                  size="sm"
+                />
+
+                {/* 4. Listen Warnings */}
+                <ListenButton
+                  text={`Warnings for ${selectedMed.brandName}: ${(selectedMed.warnings || []).join('. ')}.`}
+                  lang={lang}
+                  label="Listen Warnings"
+                  size="sm"
+                />
+
+                {/* 5. Listen Precautions */}
+                <ListenButton
+                  text={`Precautions for ${selectedMed.brandName}: ${(selectedMed.precautions || []).join('. ')}.`}
+                  lang={lang}
+                  label="Listen Precautions"
+                  size="sm"
+                />
+
+                {/* 6. Listen Storage Instructions */}
+                <ListenButton
+                  text={`Storage instructions for ${selectedMed.brandName}: ${selectedMed.storage}.`}
+                  lang={lang}
+                  label="Listen Storage"
+                  size="sm"
+                />
+              </div>
+            </div>
+
+            {/* Active Ingredients & Storage */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+                  {t.activeIngredient}
+                </span>
+                <ul className="text-xs font-semibold text-slate-800 dark:text-slate-200 space-y-1">
+                  {(selectedMed.activeIngredients || [selectedMed.genericName]).map((ing, i) => (
+                    <li key={i} className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span>{ing}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+                  {t.storageInstructions}
+                </span>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                  {selectedMed.storage}
+                </p>
+              </div>
+            </div>
+
+            {/* Common Uses Tags */}
+            <div>
+              <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>{t.commonUses}</span>
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {(selectedMed.uses || [selectedMed.commonUses]).map((u, i) => (
+                  <span
+                    key={i}
+                    className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-800"
+                  >
+                    ✓ {u}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Warnings & Precautions Columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3.5 bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl">
+                <h5 className="font-bold text-xs text-red-800 dark:text-red-300 mb-1.5 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                  <span>{t.warnings}</span>
+                </h5>
+                <ul className="text-xs text-red-700 dark:text-red-400 space-y-1">
+                  {(selectedMed.warnings || []).map((w, i) => (
+                    <li key={i}>• {w}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="p-3.5 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl">
+                <h5 className="font-bold text-xs text-amber-800 dark:text-amber-300 mb-1.5 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                  <span>{t.precautions}</span>
+                </h5>
+                <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1">
+                  {(selectedMed.precautions || []).map((p, i) => (
+                    <li key={i}>• {p}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

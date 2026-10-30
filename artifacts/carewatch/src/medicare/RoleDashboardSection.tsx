@@ -150,10 +150,20 @@ export const RoleDashboardSection: React.FC<{
               <p className="text-xs text-slate-500 mt-1">Triglycerides slightly high</p>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs text-slate-400 font-semibold uppercase">Video Consultation</span>
-              <div className="text-2xl font-black text-indigo-600 mt-1">Dr. Rajesh</div>
-              <p className="text-xs text-slate-500 mt-1">Today at 4:30 PM</p>
+            <div
+              onClick={() => onNavigateTab('telemedicine')}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-indigo-500 cursor-pointer transition group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-semibold uppercase">Video Consultation</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 font-bold group-hover:bg-indigo-600 group-hover:text-white transition">
+                  Join Call &rarr;
+                </span>
+              </div>
+              <div className="text-2xl font-black text-indigo-600 mt-1 flex items-center gap-2">
+                <Video className="w-5 h-5 text-indigo-500 animate-pulse" /> Dr. Sarah Khan
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Ready to connect • Click to launch video consultation</p>
             </div>
           </div>
 
