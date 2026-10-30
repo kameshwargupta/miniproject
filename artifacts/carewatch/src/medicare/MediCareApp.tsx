@@ -9,7 +9,6 @@ import {
   Clock,
   PhoneCall,
   Globe,
-  Volume2,
   Sparkles,
   LayoutDashboard,
   ShieldCheck,
@@ -19,8 +18,6 @@ import {
   Sun,
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES, type LanguageCode, TRANSLATIONS } from './translations';
-import { useVoice } from './voiceService';
-import { ListenButton } from './ListenButton';
 import { FloatingCopilot } from './FloatingCopilot';
 import { SmartQueueSection } from './SmartQueueSection';
 import { ReportScannerSection } from './ReportScannerSection';
@@ -37,7 +34,6 @@ export const MediCareApp: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const { speak, stop, isPlaying } = useVoice();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
   const toggleDarkMode = () => {
@@ -61,15 +57,20 @@ export const MediCareApp: React.FC = () => {
   ];
 
   return (
-    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 ${isDarkMode ? 'dark' : ''}`}>
+    <div
+      className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 ${
+        isDarkMode ? 'dark' : ''
+      }`}
+    >
       {/* Top Global Navigation Bar */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -91,44 +92,28 @@ export const MediCareApp: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 -mt-1 hidden sm:block">
-                  Multilingual Healthcare Ecosystem
+                  {t.tagline}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Right Action Bar: Language Selector, Voice Status, Dark Mode, Emergency Pill */}
+          {/* Right Action Bar: Language Selector, Dark Mode, Emergency Pill */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Global Listen to Page Overview */}
-            <ListenButton
-              text={
-                lang === 'hi'
-                  ? '???????? ??? ??? ???? ?????? ??? ?? ??????? ????, ?????? ??????? ??????, ??? ??????, ?? ?????? ?????? ??????? ?? ????? ?? ???? ????'
-                  : 'Welcome to MediCare AI. Access smart hospital queues, medical report analysis, medicine identification, and telehealth.'
-              }
-              lang={lang}
-              label={t.listen}
-              size="sm"
-              className="hidden sm:inline-flex"
-            />
-
             {/* 11 Regional Languages Dropdown */}
             <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
               <Globe className="w-4 h-4 text-blue-600 dark:text-cyan-400 shrink-0" />
               <select
                 value={lang}
-                onChange={(e) => {
-                  const newLang = e.target.value as LanguageCode;
-                  setLang(newLang);
-                  const selectedObj = SUPPORTED_LANGUAGES.find((l) => l.code === newLang);
-                  if (selectedObj) {
-                    speak(`Language changed to ${selectedObj.native}`, newLang);
-                  }
-                }}
-                className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+                onChange={(e) => setLang(e.target.value as LanguageCode)}
+                className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
               >
                 {SUPPORTED_LANGUAGES.map((l) => (
-                  <option key={l.code} value={l.code} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                  <option
+                    key={l.code}
+                    value={l.code}
+                    className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                  >
                     {l.native} ({l.label})
                   </option>
                 ))}
@@ -137,15 +122,21 @@ export const MediCareApp: React.FC = () => {
 
             {/* Dark Mode Toggle */}
             <button
+              type="button"
               onClick={toggleDarkMode}
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
-              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+              {isDarkMode ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-600" />
+              )}
             </button>
 
             {/* Emergency Button */}
             <button
+              type="button"
               onClick={() => setActiveTab('emergency')}
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors cursor-pointer"
             >
@@ -162,7 +153,7 @@ export const MediCareApp: React.FC = () => {
         <aside className="hidden lg:block w-64 shrink-0 space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 py-2 block">
-              Core Modules
+              Core Healthcare Platform
             </span>
             <nav className="space-y-1">
               {navItems.map((item) => {
@@ -171,6 +162,7 @@ export const MediCareApp: React.FC = () => {
                 return (
                   <button
                     key={item.id}
+                    type="button"
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
                       isActive
@@ -181,7 +173,15 @@ export const MediCareApp: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : item.alert ? 'text-red-500' : 'text-blue-500 dark:text-cyan-400'}`} />
+                      <Icon
+                        className={`w-4 h-4 ${
+                          isActive
+                            ? 'text-white'
+                            : item.alert
+                            ? 'text-red-500'
+                            : 'text-blue-500 dark:text-cyan-400'
+                        }`}
+                      />
                       <span>{item.label}</span>
                     </div>
                     {item.alert && (
@@ -193,14 +193,14 @@ export const MediCareApp: React.FC = () => {
             </nav>
           </div>
 
-          {/* Quick Info Box */}
+          {/* Quick Voice Feature Info Card */}
           <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/40 dark:to-cyan-950/30 border border-blue-200/60 dark:border-blue-900/40 rounded-2xl p-4 text-xs space-y-2">
             <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-300">
               <ShieldCheck className="w-4 h-4 text-blue-600" />
-              <span>Voice & Health Safe</span>
+              <span>Focused Voice Assistance</span>
             </div>
             <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
-              Every medical report and medicine card has a dedicated speaker button for audio playback in all 11 Indian languages.
+              Dedicated voice assistance with speed and playback control is active on AI Report Scanner, AI Medicine Scanner, and MediCare Copilot (with interruption support).
             </p>
           </div>
         </aside>
@@ -215,7 +215,11 @@ export const MediCareApp: React.FC = () => {
                     <HeartPulse className="w-5 h-5 text-blue-600" />
                     <span className="font-bold text-base">{t.appTitle}</span>
                   </div>
-                  <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="p-1 rounded-lg cursor-pointer"
+                  >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -226,11 +230,12 @@ export const MediCareApp: React.FC = () => {
                     return (
                       <button
                         key={item.id}
+                        type="button"
                         onClick={() => {
                           setActiveTab(item.id);
                           setIsMobileMenuOpen(false);
                         }}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold ${
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer ${
                           activeTab === item.id
                             ? 'bg-blue-600 text-white'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100'
@@ -245,7 +250,7 @@ export const MediCareApp: React.FC = () => {
               </div>
 
               <div className="pt-3 border-t text-xs text-slate-400 text-center">
-                MediCare AI • All-in-One Platform
+                MediCare AI â€¢ All-in-One Healthcare
               </div>
             </div>
           </div>
@@ -266,7 +271,7 @@ export const MediCareApp: React.FC = () => {
         </main>
       </div>
 
-      {/* Floating Multilingual AI Voice Assistant Copilot */}
+      {/* Floating Multilingual AI Voice Assistant Copilot (with Interrupt Option) */}
       <FloatingCopilot lang={lang} />
     </div>
   );

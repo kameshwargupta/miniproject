@@ -7,16 +7,14 @@ import {
   CheckCircle,
   AlertCircle,
   Calendar,
-  Volume2,
   Trash2,
+  Check,
 } from 'lucide-react';
 import { type MedicineReminder } from './mockData';
-import { ListenButton } from './ListenButton';
 import { type LanguageCode, TRANSLATIONS } from './translations';
-import { useVoice } from './voiceService';
 
 export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
-  const [reminders, setReminders] = useState<MedicineReminder[]>([
+  const [reminders, setReminders] = useState<Array<MedicineReminder & { taken?: boolean }>>([
     {
       id: 'rem-1',
       medicineName: 'Pantocid 40',
@@ -25,6 +23,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       frequency: 'Daily Morning',
       mealTiming: 'Before Meal',
       active: true,
+      taken: true,
     },
     {
       id: 'rem-2',
@@ -34,6 +33,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       frequency: 'As needed (SOS)',
       mealTiming: 'After Meal',
       active: true,
+      taken: false,
     },
     {
       id: 'rem-3',
@@ -43,6 +43,7 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       frequency: 'Daily Night',
       mealTiming: 'After Meal',
       active: true,
+      taken: false,
     },
   ]);
 
@@ -50,15 +51,15 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [newDosage, setNewDosage] = useState('1 Tablet');
   const [newTime, setNewTime] = useState('09:00 AM');
   const [newMeal, setNewMeal] = useState<'Before Meal' | 'After Meal'>('After Meal');
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  const { speak } = useVoice();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
   const handleAddReminder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMed.trim()) return;
 
-    const reminder: MedicineReminder = {
+    const reminder = {
       id: `rem-${Date.now()}`,
       medicineName: newMed,
       dosage: newDosage,
@@ -66,178 +67,224 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       frequency: 'Daily',
       mealTiming: newMeal,
       active: true,
+      taken: false,
     };
 
     setReminders([...reminders, reminder]);
     setNewMed('');
-
-    speak(
-      lang === 'hi'
-        ? `??? ???????? ??? ?? ???: ${newMed}, ??? ${newTime}, ${newMeal}?`
-        : `Reminder set for ${newMed} at ${newTime}, ${newMeal}.`,
-      lang
-    );
+    setShowAddForm(false);
   };
 
-  const toggleReminder = (id: string) => {
+  const toggleTaken = (id: string) => {
     setReminders((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r))
+      prev.map((r) => (r.id === id ? { ...r, taken: !r.taken } : r))
     );
   };
 
-  const deleteReminder = (id: string) => {
+  const handleDelete = (id: string) => {
     setReminders((prev) => prev.filter((r) => r.id !== id));
   };
+
+  const takenCount = reminders.filter((r) => r.taken).length;
+  const progressPercent = Math.round((takenCount / (reminders.length || 1)) * 100);
 
   return (
     <div className="space-y-6">
       {/* Banner */}
-      <div className="bg-gradient-to-r from-cyan-700 via-teal-700 to-blue-700 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-700 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold uppercase tracking-wider">
-            Audio & Multilingual Dose Alerts
+            Daily Medication Schedule
           </span>
-          <h2 className="text-2xl font-bold mt-2">{t.navReminders}</h2>
-          <p className="text-cyan-100 text-sm max-w-xl mt-1">
-            Never miss prescribed medications. Receive multilingual sound alerts and spoken dosage reminders.
-          </p>
+          <h2 className="text-2xl font-bold mt-2">{t.remindersTitle}</h2>
+          <p className="text-blue-100 text-sm max-w-xl mt-1">{t.remindersSubtitle}</p>
         </div>
-        <ListenButton
-          text={
-            lang === 'hi'
-              ? '??? ???????? ??? ???? ?????? ??? ???? ?? ???? ??????? ?? ??? ?? ?????? ?? ???? ???????? ??? ?? ???? ????'
-              : 'Welcome to Medicine Reminders. Schedule daily alerts and voice notifications for your medications.'
-          }
-          lang={lang}
-          label="Listen Overview"
-          size="lg"
-          className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-        />
+
+        <button
+          type="button"
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{t.addReminder}</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Reminder Cards */}
-        <div className="lg:col-span-2 space-y-3">
-          {reminders.map((r) => (
-            <div
-              key={r.id}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-950/60 text-cyan-600 flex items-center justify-center shrink-0">
-                  <Pill className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100">
-                    {r.medicineName} ({r.dosage})
-                  </h4>
-                  <p className="text-xs text-slate-500">
-                    ? {r.time} • {r.mealTiming} • {r.frequency}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                <ListenButton
-                  text={`Reminder for ${r.medicineName}, dosage ${r.dosage}, scheduled at ${r.time}, to be taken ${r.mealTiming}.`}
-                  lang={lang}
-                  label="Listen"
-                  size="sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => toggleReminder(r.id)}
-                  className={`text-xs px-2.5 py-1 rounded-lg font-semibold cursor-pointer ${
-                    r.active
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  {r.active ? 'Active' : 'Paused'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => deleteReminder(r.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer"
-                  title="Delete Reminder"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+      {/* Daily Progress Tracker */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+            Today's Adherence Progress
+          </h3>
+          <p className="text-xs text-slate-500">
+            {takenCount} of {reminders.length} doses taken today
+          </p>
         </div>
 
-        {/* Create Reminder Form */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
-          <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-cyan-600" />
-            Add Medication Reminder
-          </h3>
+        <div className="flex items-center gap-3 w-full sm:w-1/2">
+          <div className="flex-1 bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
+            <div
+              className="bg-gradient-to-r from-blue-500 to-emerald-500 h-full transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            ></div>
+          </div>
+          <span className="font-bold text-sm text-slate-800 dark:text-slate-200 font-mono">
+            {progressPercent}%
+          </span>
+        </div>
+      </div>
 
-          <form onSubmit={handleAddReminder} className="space-y-3 text-xs">
+      {/* Add Reminder Modal / Inline Form */}
+      {showAddForm && (
+        <form
+          onSubmit={handleAddReminder}
+          className="bg-white dark:bg-slate-900 border border-blue-400 dark:border-blue-700 rounded-2xl p-5 shadow-md space-y-4 animate-in fade-in"
+        >
+          <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Plus className="w-4 h-4 text-blue-600" />
+            <span>{t.addReminder}</span>
+          </h4>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                Medicine Name
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {t.medName}
               </label>
               <input
                 type="text"
+                required
                 value={newMed}
                 onChange={(e) => setNewMed(e.target.value)}
                 placeholder="e.g. Paracetamol, Metformin"
-                required
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-200"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                Dosage
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {t.dosage}
               </label>
               <input
                 type="text"
                 value={newDosage}
                 onChange={(e) => setNewDosage(e.target.value)}
-                placeholder="e.g. 1 Tablet or 5ml"
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-200"
+                placeholder="1 Tablet, 5ml"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                  Time
-                </label>
-                <input
-                  type="text"
-                  value={newTime}
-                  onChange={(e) => setNewTime(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-200"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                  Meal Timing
-                </label>
-                <select
-                  value={newMeal}
-                  onChange={(e) => setNewMeal(e.target.value as any)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-200"
-                >
-                  <option value="Before Meal">Before Meal</option>
-                  <option value="After Meal">After Meal</option>
-                </select>
-              </div>
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {t.time}
+              </label>
+              <input
+                type="text"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                placeholder="09:00 AM"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
 
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {t.mealTiming}
+              </label>
+              <select
+                value={newMeal}
+                onChange={(e) => setNewMeal(e.target.value as any)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Before Meal">{t.beforeFood}</option>
+                <option value="After Meal">{t.afterFood}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddForm(false)}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold hover:bg-slate-100 cursor-pointer"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
-              className="w-full py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer text-xs transition-all"
+              className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer"
             >
-              Save Schedule
+              Save Reminder
             </button>
-          </form>
-        </div>
+          </div>
+        </form>
+      )}
+
+      {/* Reminder Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {reminders.map((rem) => (
+          <div
+            key={rem.id}
+            className={`p-5 rounded-2xl border transition-all duration-300 shadow-xs flex flex-col justify-between ${
+              rem.taken
+                ? 'bg-slate-50 dark:bg-slate-900/40 border-emerald-300 dark:border-emerald-800/60 opacity-80'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 font-mono">
+                  <Clock className="w-3.5 h-3.5" />
+                  {rem.time}
+                </span>
+
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    rem.taken
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                  }`}
+                >
+                  {rem.taken ? `âœ“ ${t.taken}` : t.pending}
+                </span>
+              </div>
+
+              <h4
+                className={`font-black text-lg text-slate-900 dark:text-slate-100 ${
+                  rem.taken ? 'line-through text-slate-400 dark:text-slate-600' : ''
+                }`}
+              >
+                {rem.medicineName}
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {rem.dosage} â€¢ {rem.mealTiming === 'Before Meal' ? t.beforeFood : t.afterFood}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => toggleTaken(rem.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  rem.taken
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>{rem.taken ? t.taken : t.markTaken}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDelete(rem.id)}
+                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition cursor-pointer"
+                title={t.delete}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

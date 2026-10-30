@@ -8,28 +8,42 @@ import {
   Navigation,
   Search,
   Building,
-  Volume2,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import { INITIAL_PHARMACIES, type Pharmacy } from './mockData';
-import { ListenButton } from './ListenButton';
 import { type LanguageCode, TRANSLATIONS } from './translations';
 
 export const PharmacyFinderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [pharmacies] = useState<Pharmacy[]>(INITIAL_PHARMACIES);
   const [searchMedicine, setSearchMedicine] = useState('');
   const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy>(INITIAL_PHARMACIES[0]);
+  const [filter24x7, setFilter24x7] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
   const filteredPharmacies = pharmacies.filter((p) => {
+    if (filter24x7 && !p.isOpen24x7) return false;
     if (!searchMedicine.trim()) return true;
+    const query = searchMedicine.toLowerCase();
     return (
-      p.name.toLowerCase().includes(searchMedicine.toLowerCase()) ||
-      p.availableMedicines.some((m) =>
-        m.toLowerCase().includes(searchMedicine.toLowerCase())
-      )
+      p.name.toLowerCase().includes(query) ||
+      p.address.toLowerCase().includes(query) ||
+      p.availableMedicines.some((m) => m.toLowerCase().includes(query))
     );
   });
+
+  const handleGetDirections = (pharm: Pharmacy) => {
+    setSelectedPharmacy(pharm);
+    setAlertMsg(`Navigation started to ${pharm.name}. Distance: ${pharm.distanceKm} km (approx ${Math.round(pharm.distanceKm * 4)} mins driving).`);
+    setTimeout(() => setAlertMsg(null), 5000);
+  };
+
+  const handleCall = (pharm: Pharmacy) => {
+    setAlertMsg(`Connecting call to ${pharm.name} at ${pharm.phone}...`);
+    setTimeout(() => setAlertMsg(null), 4000);
+  };
 
   return (
     <div className="space-y-6">
@@ -39,39 +53,47 @@ export const PharmacyFinderSection: React.FC<{ lang: LanguageCode }> = ({ lang }
           <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold uppercase tracking-wider">
             Live Medicine Stock & GPS Locator
           </span>
-          <h2 className="text-2xl font-bold mt-2">{t.navPharmacyFinder}</h2>
-          <p className="text-blue-100 text-sm max-w-xl mt-1">
-            Locate verified 24x7 pharmacies, check reported medicine stock in real-time, get directions, and listen to pharmacy details.
-          </p>
+          <h2 className="text-2xl font-bold mt-2">{t.pharmacyTitle}</h2>
+          <p className="text-blue-100 text-sm max-w-xl mt-1">{t.pharmacySubtitle}</p>
         </div>
-        <ListenButton
-          text={
-            lang === 'hi'
-              ? '???????? ???? ??? ???? ?????? ??? ???? ?? ???? ????? ???? ?????? ??????? ?? ????? ?????? ??????? ?? ???? ????? ??? ???? ????'
-              : 'Welcome to Smart Pharmacy Finder. Find nearby pharmacies with live medicine stock availability and spoken directions.'
-          }
-          lang={lang}
-          label="Listen Overview"
-          size="lg"
-          className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-        />
       </div>
 
-      {/* Search Input */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
+      {alertMsg && (
+        <div className="bg-blue-600 text-white px-4 py-3 rounded-xl flex items-center justify-between text-xs font-semibold shadow-md animate-in fade-in">
+          <span>{alertMsg}</span>
+          <button onClick={() => setAlertMsg(null)} className="text-white hover:underline text-xs">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Search Input & Filter Tabs */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative flex-1 w-full">
+          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
           <input
             type="text"
             value={searchMedicine}
             onChange={(e) => setSearchMedicine(e.target.value)}
-            placeholder="Search pharmacies by medicine name (e.g., Dolo, Augmentin, Telma)..."
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={t.searchPharmacy}
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+
+        <button
+          type="button"
+          onClick={() => setFilter24x7(!filter24x7)}
+          className={`px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
+            filter24x7
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+          }`}
+        >
+          {t.filter24x7}
+        </button>
       </div>
 
-      {/* Two Column: List & Map Simulation */}
+      {/* Two Column: List & Map View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Pharmacy Cards List */}
         <div className="lg:col-span-2 space-y-3">
@@ -79,119 +101,159 @@ export const PharmacyFinderSection: React.FC<{ lang: LanguageCode }> = ({ lang }
             <div
               key={pharm.id}
               onClick={() => setSelectedPharmacy(pharm)}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer ${
+              className={`p-4 rounded-2xl border transition cursor-pointer ${
                 selectedPharmacy.id === pharm.id
-                  ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-950/20 shadow-md ring-1 ring-blue-500/20'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-xs'
+                  ? 'border-blue-500 bg-blue-50/30 dark:bg-blue-950/20 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-300'
               }`}
             >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-base text-slate-900 dark:text-slate-100">
+                    <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
                       {pharm.name}
-                    </h4>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800">
-                      {pharm.distance}
-                    </span>
+                    </h3>
+                    {pharm.isOpen24x7 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold">
+                        24x7
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    {pharm.address}
+                    <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                    <span>{pharm.address}</span>
                   </p>
                 </div>
 
-                <span
-                  className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-                    pharm.stockStatus === 'In Stock'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}
-                >
-                  {pharm.stockStatus}
-                </span>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">
+                      {pharm.distanceKm} km
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">{t.distance}</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Verified Stock Pills */}
-              <div className="mb-4">
-                <span className="text-[11px] text-slate-400 block mb-1">
-                  Reported In-Stock Medicines:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {pharm.availableMedicines.map((med, idx) => (
+              {/* Medicine Stock Tags */}
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="text-[11px] text-slate-400 font-medium">{t.availableMeds}:</span>
+                  {pharm.availableMedicines.map((med, i) => (
                     <span
-                      key={idx}
-                      className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md text-[11px] font-medium"
+                      key={i}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px]"
                     >
-                      {med}
+                      ✓ {med}
                     </span>
                   ))}
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-                <div className="flex items-center gap-4 text-slate-500">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" /> {pharm.timing}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5" /> {pharm.phone}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCall(pharm);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>{t.call}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGetDirections(pharm);
+                    }}
+                    className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>{t.directions}</span>
+                  </button>
                 </div>
-
-                <ListenButton
-                  text={`${pharm.name}, located at ${pharm.address}, ${pharm.distance} away. Operating hours: ${pharm.timing}. Contact phone: ${pharm.phone}. Reported stock status: ${pharm.stockStatus}. Available medicines include: ${pharm.availableMedicines.join(', ')}.`}
-                  lang={lang}
-                  label="Listen Info"
-                  size="sm"
-                />
               </div>
             </div>
           ))}
         </div>
 
-        {/* Right Column: Interactive Map Simulation */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-          <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Navigation className="w-4 h-4 text-blue-600" />
-            Live Pharmacy GPS Map
-          </h4>
+        {/* Right: Interactive Map Simulation */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              <span>{t.mapView}</span>
+            </h4>
 
-          {/* Map canvas mock */}
-          <div className="h-64 rounded-xl bg-slate-100 dark:bg-slate-800 border relative overflow-hidden flex items-center justify-center text-center p-4">
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]"></div>
-            <div className="relative z-10 space-y-2">
-              <div className="w-10 h-10 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg animate-bounce">
-                <MapPin className="w-6 h-6" />
-              </div>
-              <p className="font-bold text-xs text-slate-800 dark:text-slate-200">
-                {selectedPharmacy.name}
-              </p>
-              <p className="text-[11px] text-slate-500">{selectedPharmacy.address}</p>
-              <a
-                href={`https://maps.google.com/?q=${encodeURIComponent(selectedPharmacy.name + ' ' + selectedPharmacy.address)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-blue-600 font-semibold underline"
-              >
-                Open in Google Maps ?
-              </a>
+            {/* Simulated Canvas/SVG GPS Map */}
+            <div className="w-full h-56 bg-slate-100 dark:bg-slate-800 rounded-xl relative overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center p-4">
+              {/* Roads / Grid Background */}
+              <svg className="absolute inset-0 w-full h-full opacity-30 text-slate-400" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                    <path d="M 30 0 L 0 0 0 30" fill="none" stroke="currentColor" strokeWidth="1" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+                <path d="M 0 60 Q 150 120 300 80" fill="none" stroke="#3b82f6" strokeWidth="4" />
+                <path d="M 120 0 Q 150 150 200 300" fill="none" stroke="#93c5fd" strokeWidth="3" />
+              </svg>
+
+              {/* Pins for pharmacies */}
+              {pharmacies.map((p, idx) => {
+                const isCurrent = p.id === selectedPharmacy.id;
+                const positions = [
+                  { top: '35%', left: '42%' },
+                  { top: '65%', left: '28%' },
+                  { top: '25%', left: '70%' },
+                  { top: '75%', left: '60%' },
+                ];
+                const pos = positions[idx % positions.length];
+
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedPharmacy(p)}
+                    style={{ top: pos.top, left: pos.left }}
+                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer transition-all duration-300 ${
+                      isCurrent ? 'scale-125 z-20' : 'hover:scale-110 z-10'
+                    }`}
+                  >
+                    <div
+                      className={`p-1.5 rounded-full shadow-lg ${
+                        isCurrent
+                          ? 'bg-blue-600 text-white ring-4 ring-blue-300 animate-bounce'
+                          : 'bg-emerald-600 text-white'
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-bold bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded shadow-xs border border-slate-200 dark:border-slate-700 whitespace-nowrap mt-0.5">
+                      {p.name.split(' ')[0]}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="p-3 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-200/60 text-xs space-y-1">
-            <p className="font-semibold text-blue-900 dark:text-blue-300">
-              Directions Assistance:
-            </p>
-            <p className="text-slate-600 dark:text-slate-400 text-[11px]">
-              Head north-east on Ring Road for 500m. The pharmacy is on the ground floor next to Metro Gate 2.
-            </p>
-            <ListenButton
-              text={`Directions to ${selectedPharmacy.name}: Head north-east towards Ring Road for 500 meters. The pharmacy is on the right side next to Metro Gate 2.`}
-              lang={lang}
-              label="Listen Directions"
-              size="sm"
-            />
+          {/* Selected Pin Details Box */}
+          <div className="mt-4 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h5 className="font-bold text-xs text-slate-900 dark:text-slate-100 mb-1">
+              {selectedPharmacy.name}
+            </h5>
+            <p className="text-[11px] text-slate-500 mb-2">{selectedPharmacy.address}</p>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-emerald-600 font-bold">
+                {selectedPharmacy.isOpen24x7 ? 'Open 24 Hours' : 'Open till 11:00 PM'}
+              </span>
+              <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">
+                {selectedPharmacy.phone}
+              </span>
+            </div>
           </div>
         </div>
       </div>

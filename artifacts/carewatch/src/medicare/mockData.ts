@@ -159,7 +159,7 @@ export const INITIAL_MEDICINES: MedicineItem[] = [
     commonUses: 'Bacterial infections of throat, chest, ear, sinus, and urinary tract.',
     precautions: 'Complete full prescribed course even if feeling better. Take with meals to avoid stomach upset.',
     warnings: 'Do not take if allergic to Penicillin. Requires doctor prescription.',
-    storage: 'Store below 25°C in moisture-proof packaging.',
+    storage: 'Store below 25ï¿½C in moisture-proof packaging.',
     price: '?210 / strip of 10',
   },
   {
@@ -185,7 +185,7 @@ export const INITIAL_MEDICINES: MedicineItem[] = [
     commonUses: 'Respiratory tract infections, tonsillitis, bronchitis, and skin infections.',
     precautions: 'Take once daily at the same time. Drink plenty of water.',
     warnings: 'Do not discontinue early. Consult doctor if unusual heart rhythm occurs.',
-    storage: 'Store in dry place below 30°C.',
+    storage: 'Store in dry place below 30ï¿½C.',
     price: '?125 / strip of 5',
   },
   {
@@ -211,7 +211,7 @@ export const INITIAL_MEDICINES: MedicineItem[] = [
     commonUses: 'Type 2 Diabetes mellitus blood sugar regulation.',
     precautions: 'Take immediately before or with the morning meal.',
     warnings: 'Watch out for low blood sugar symptoms (dizziness, sweating). Keep glucose candies handy.',
-    storage: 'Store below 25°C.',
+    storage: 'Store below 25ï¿½C.',
     price: '?135 / strip of 15',
   },
 ];
