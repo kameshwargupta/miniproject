@@ -28,11 +28,13 @@ import {
 } from 'lucide-react';
 import { INITIAL_DOCTORS, type Doctor } from './mockData';
 import { type LanguageCode, TRANSLATIONS } from './translations';
+import { useVoice } from './voiceService';
 
 export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [doctors] = useState<Doctor[]>(INITIAL_DOCTORS);
   const [searchDoctor, setSearchDoctor] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
+  const { speak, stop } = useVoice();
 
   // Video Consultation State
   const [activeCallDoc, setActiveCallDoc] = useState<Doctor | null>(null);
@@ -142,8 +144,19 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
       }
 
       // Initialize doctor greeting and dynamic subtitles
+      const welcomeSpeech =
+        lang === 'hi'
+          ? `नमस्ते! मैं ${activeCallDoc.name} हूँ। मैं आपकी लाइव वीडियो कॉल पर हूँ। कृपया अपने लक्षण या समस्या बताएं।`
+          : `Hello! I am ${activeCallDoc.name}. I am live on your consultation call. Please describe what health symptoms you are experiencing.`;
+
+      setDoctorSubtitles(`"${welcomeSpeech}"`);
+      setIsDoctorSpeaking(true);
+      setTimeout(() => {
+        speak(welcomeSpeech, lang);
+      }, 1200);
+
       const doctorSpeechSequence = [
-        `"Hello! I am ${activeCallDoc.name}. I have your medical chart open. Please describe what symptoms you are experiencing today."`,
+        `"I have your medical chart open. Please describe what symptoms you are experiencing today."`,
         `"I understand. Have you noticed any temperature rise, headache, or throat irritation?"`,
         `"Your vitals and primary records appear steady. Let me note your observations in your clinical file."`,
         `"I am preparing your digital prescription with safe dosages. Ensure you drink warm fluids and get adequate rest."`,
@@ -240,6 +253,7 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
 
   // End Call & Show Prescription Summary
   const handleEndCall = () => {
+    stop();
     playChime('end');
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -266,26 +280,49 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
     setChatMessages((prev) => [...prev, patientMsg]);
     if (!customText) setChatInput('');
 
-    // Contextual intelligent doctor response
+    // Contextual intelligent doctor response with voice feedback
     setTimeout(() => {
-      let docResponse = 'I have noted that in your consultation notes. Let us monitor this closely.';
+      let docResponse =
+        lang === 'hi'
+          ? 'मैंने आपके लक्षण नोट कर लिए हैं। पर्याप्त आराम लें और गुनगुना पानी पिएं।'
+          : 'I have noted your symptoms in your chart. Please stay relaxed and keep hydrated.';
       const lower = textToSend.toLowerCase();
 
-      if (lower.includes('fever') || lower.includes('temperature') || lower.includes('chills')) {
+      if (lower.includes('fever') || lower.includes('temperature') || lower.includes('बुखार') || lower.includes('chills')) {
         docResponse =
-          'For temperature elevation, keep hydrated and take Paracetamol 650mg after food if above 99.5°F. I will prescribe it in your summary.';
-      } else if (lower.includes('headache') || lower.includes('pain') || lower.includes('ache')) {
+          lang === 'hi'
+            ? 'बुखार के लिए पैरासिटामोल 650mg (Dolo 650) भोजन के बाद लें। ठंडे पानी की पट्टियां रखें और 3 लीटर पानी पिएं। प्रिस्क्रिप्शन में जोड़ दिया गया है।'
+            : 'For temperature elevation, keep hydrated and take Paracetamol 650mg after food if above 99.5°F. I have added it to your prescription.';
+      } else if (lower.includes('headache') || lower.includes('pain') || lower.includes('ache') || lower.includes('दर्द')) {
         docResponse =
-          'Headache can accompany viral fatigue or dehydration. Rest in a dimly lit room and avoid screen glare. Take the prescribed analgesic.';
+          lang === 'hi'
+            ? 'सिरदर्द तनाव या पानी की कमी से हो सकता है। शांत अंधेरे कमरे में आराम करें और भोजन के बाद कोम्बिफ्लाम लें।'
+            : 'Headache can accompany viral fatigue or dehydration. Rest in a dimly lit room and avoid screen glare. Take the prescribed analgesic after meals.';
+      } else if (lower.includes('cough') || lower.includes('throat') || lower.includes('खांसी') || lower.includes('gala')) {
+        docResponse =
+          lang === 'hi'
+            ? 'गुनगुने नमक के पानी से गरारे करें और भाप लें। सूखी खांसी के लिए Ascoril D सिरप 10ml दिन में 3 बार लें।'
+            : 'Gargle with warm saline water twice daily and inhale steam. For dry cough, use Dextromethorphan syrup 10ml thrice daily.';
+      } else if (lower.includes('acid') || lower.includes('gas') || lower.includes('stomach') || lower.includes('pet')) {
+        docResponse =
+          lang === 'hi'
+            ? 'एसिडिटी और पेट जलन के लिए पैंटोप्राजोल 40mg (Pantocid 40) सुबह खाली पेट लें और तुरंत राहत के लिए डायजीन सिरप लें।'
+            : 'For gastric acidity and reflux, take Pantoprazole 40mg on an empty stomach in the morning. Digene gel provides immediate mucosal relief.';
       } else if (lower.includes('chest') || lower.includes('breath') || lower.includes('heart')) {
         docResponse =
-          'Please sit upright and relax. If you experience severe chest tightness or radiation to your jaw/left arm, click Emergency immediately.';
-      } else if (lower.includes('prescription') || lower.includes('medicine') || lower.includes('dose')) {
+          lang === 'hi'
+            ? 'कृपया सीधे बैठें और शांत रहें। यदि सीने में तेज दबाव या बाएं हाथ में दर्द हो, तो तुरंत आपातकालीन बटन दबाएं।'
+            : 'Please sit upright and relax. If you experience severe chest tightness or radiation to your jaw/left arm, seek emergency care immediately.';
+      } else if (lower.includes('prescription') || lower.includes('medicine') || lower.includes('dose') || lower.includes('दवा')) {
         docResponse =
-          'Your digital prescription is ready with complete dosage timings. It will be available when we end our call.';
-      } else if (lower.includes('report') || lower.includes('cbc') || lower.includes('blood')) {
+          lang === 'hi'
+            ? 'आपका डिजिटल प्रिस्क्रिप्शन तैयार है। कॉल समाप्त करते ही आपको पूरा डाउनलोड लिंक और फार्मेसी ऑर्डर का विकल्प मिलेगा।'
+            : 'Your digital prescription is ready with complete dosage timings. It will be available when we end our call.';
+      } else if (lower.includes('report') || lower.includes('cbc') || lower.includes('blood') || lower.includes('रिपोर्ट')) {
         docResponse =
-          'I reviewed your uploaded lab report. Your hemoglobin is slightly low, but WBC and platelets are normal. Iron-rich nutrition is recommended.';
+          lang === 'hi'
+            ? 'मैंने आपकी लैब रिपोर्ट की समीक्षा की है। आपका हीमोग्लोबिन थोड़ा कम (11.8 g/dL) है, जिसके लिए आयरन युक्त आहार अनुशंसित है।'
+            : 'I reviewed your uploaded lab report. Your hemoglobin is slightly low (11.8 g/dL), but WBC and platelets are normal. Iron-rich nutrition is recommended.';
       }
 
       setChatMessages((prev) => [
@@ -298,8 +335,11 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
       ]);
       setDoctorSubtitles(`"${docResponse}"`);
       setIsDoctorSpeaking(true);
-      setTimeout(() => setIsDoctorSpeaking(false), 3500);
-    }, 1100);
+      if (isSpeakerOn) {
+        speak(docResponse, lang);
+      }
+      setTimeout(() => setIsDoctorSpeaking(false), 4000);
+    }, 1000);
   };
 
   const handleBookAppointment = (doc: Doctor) => {
