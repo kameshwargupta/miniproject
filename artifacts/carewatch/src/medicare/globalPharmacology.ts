@@ -1108,6 +1108,7 @@ export const resolveGlobalMedicine = (rawQuery: string): MedicineItem => {
   const detectedStrength = extractStrength(cleanQuery);
 
   // A. Check in Extensive Clinical Database (105+ Indian & Global Medicines)
+  // 1. Exact Name Match
   const exactDbMatch = EXTENSIVE_MEDICINES_DATABASE.find(
     (m) =>
       m.brandName.toLowerCase() === lower ||
@@ -1116,6 +1117,21 @@ export const resolveGlobalMedicine = (rawQuery: string): MedicineItem => {
   );
   if (exactDbMatch) return exactDbMatch;
 
+  // 2. Token / Significant Word Match (e.g. "crocin", "pan", "augmentin", "combiflam", "azithral")
+  const significantTokens = lower
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 3 && !['tablet', 'tablets', 'capsule', 'capsules', 'strip', 'pack', 'syrup', 'injection', 'drops', 'photo', 'image'].includes(w));
+
+  if (significantTokens.length > 0) {
+    const tokenDbMatch = EXTENSIVE_MEDICINES_DATABASE.find((m) => {
+      const bLower = m.brandName.toLowerCase();
+      const gLower = m.genericName.toLowerCase();
+      return significantTokens.some((tok) => bLower.includes(tok) || gLower.includes(tok));
+    });
+    if (tokenDbMatch) return tokenDbMatch;
+  }
+
+  // 3. Partial Substring Match
   const partialDbMatch = EXTENSIVE_MEDICINES_DATABASE.find(
     (m) =>
       lower.includes(m.brandName.toLowerCase()) ||
@@ -1126,7 +1142,7 @@ export const resolveGlobalMedicine = (rawQuery: string): MedicineItem => {
 
   // B. Check in Worldwide Famous Medicines Dictionary
   for (const [key, drug] of Object.entries(WORLD_MEDICINES)) {
-    if (lower.includes(key) || key.includes(lower)) {
+    if (lower.includes(key) || significantTokens.includes(key)) {
       return {
         id: `world-${key}-${Date.now()}`,
         brandName: cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1),

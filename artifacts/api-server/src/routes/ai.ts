@@ -303,24 +303,36 @@ function generateDynamicReport(hint: string, text?: string, customPatientName?: 
 // POST /api/ai/analyze-report
 // -----------------------------------------------------------------------------
 router.post("/ai/analyze-report", async (req: Request, res: Response) => {
-  const { hint, text, patientName, language = 'en', apiKey, provider = 'gemini' } = req.body;
+  const { hint, text, image, patientName, language = 'en', apiKey, provider = 'gemini' } = req.body;
   const activeGeminiKey = apiKey || process.env.GEMINI_API_KEY;
   const activeOpenAiKey = apiKey || process.env.OPENAI_API_KEY;
 
   // 1. Try Google Gemini API if key is available
   if (provider === 'gemini' && activeGeminiKey) {
     try {
+      const parts: any[] = [];
+      if (image && typeof image === 'string' && image.includes('base64,')) {
+        const mime = image.split(';')[0].replace('data:', '') || 'image/jpeg';
+        const base64Data = image.split('base64,')[1];
+        parts.push({
+          inlineData: {
+            mimeType: mime,
+            data: base64Data,
+          },
+        });
+      }
+
       const prompt = `You are a certified senior diagnostic clinical pathologist and medical report extractor.
-Analyze the following medical report details, extracted OCR findings, or test notes:
+Analyze the following medical report image, extracted OCR findings, or test notes:
 ---
 Document hint: ${hint || 'Lab Test'}
-Report text: ${text || 'CBC / Metabolic Blood Report'}
+Report text: ${text || 'Clinical Blood / Diagnostic Report'}
 Patient: ${patientName || 'Patient'}
 Target language: ${language}
 ---
 Extract and synthesize the EXACT medical report details into valid JSON with this exact schema:
 {
-  "testType": "string (Specific test name, e.g. Thyroid Panel, Lipid Profile, Complete Blood Count, Liver Function LFT)",
+  "testType": "string (Specific test name, e.g. Thyroid Panel, Lipid Profile, Complete Blood Count, Liver Function LFT, Kidney Function KFT)",
   "patientName": "string",
   "reportDate": "string",
   "summary": "string (comprehensive, exact clinical narrative citing the specific numbers and findings)",
@@ -341,13 +353,15 @@ Extract and synthesize the EXACT medical report details into valid JSON with thi
 }
 Output pure JSON only without markdown formatting.`;
 
+      parts.push({ text: prompt });
+
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeGeminiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
+            contents: [{ parts }],
             generationConfig: {
               temperature: 0.2,
               responseMimeType: "application/json"
@@ -443,13 +457,46 @@ Return structured JSON with testType, patientName, reportDate, summary, mainPoin
 // POST /api/ai/analyze-medicine
 // -----------------------------------------------------------------------------
 router.post("/ai/analyze-medicine", async (req: Request, res: Response) => {
-  const { query, hint, apiKey, provider = 'gemini' } = req.body;
+  const { query, hint, image, apiKey, provider = 'gemini' } = req.body;
   const activeGeminiKey = apiKey || process.env.GEMINI_API_KEY;
 
   if (activeGeminiKey) {
     try {
-      const prompt = `You are a clinical pharmacologist.
-Analyze the following medicine or scanned packaging:
+      const parts: any[] = [];
+      if (image && typeof image === 'string' && image.includes('base64,')) {
+        const mime = image.split(';')[0].replace('data:', '') || 'image/jpeg';
+        const base64Data = image.split('base64,')[1];
+        parts.push({
+          inlineData: {
+            mimeType: mime,
+            data: base64Data,
+          },
+        });
+        parts.push({
+          text: `You are an expert clinical pharmacologist. Inspect this photo of a medicine blister pack, pill strip, bottle, or packaging box.
+Read the exact brand name, active salt, strength, dosage form, and clinical directions printed on the packaging.
+Return pure JSON with this exact schema:
+{
+  "brandName": "string",
+  "genericName": "string",
+  "strength": "string",
+  "dosageForm": "string",
+  "category": "string",
+  "activeIngredients": ["string"],
+  "uses": ["string", "string", "string"],
+  "howToTake": "string (Exact directions: before/after/with meals, frequency, spacing intervals, hydration, precautions)",
+  "commonUses": "string",
+  "precautions": ["string", "string", "string"],
+  "warnings": ["string", "string"],
+  "storage": "string",
+  "price": "string",
+  "similarSoundingMeds": ["string"]
+}
+Output pure JSON only without markdown formatting.`,
+        });
+      } else {
+        const prompt = `You are a clinical pharmacologist.
+Analyze the following medicine query or packaging text:
 Query / Hint: ${query || hint || 'Medicine'}
 Extract and format into valid JSON with this exact schema:
 {
@@ -468,7 +515,9 @@ Extract and format into valid JSON with this exact schema:
   "price": "string",
   "similarSoundingMeds": ["string"]
 }
-Output pure JSON only.`;
+Output pure JSON only without markdown formatting.`;
+        parts.push({ text: prompt });
+      }
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeGeminiKey}`,
@@ -476,7 +525,7 @@ Output pure JSON only.`;
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
+            contents: [{ parts }],
             generationConfig: {
               temperature: 0.2,
               responseMimeType: "application/json"

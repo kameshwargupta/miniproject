@@ -293,6 +293,7 @@ export const extractDynamicReportClient = (
 export async function analyzeMedicalReportWithAi(params: {
   hint: string;
   text?: string;
+  image?: string;
   patientName?: string;
   language?: string;
 }): Promise<MedicalReport> {
@@ -306,6 +307,7 @@ export async function analyzeMedicalReportWithAi(params: {
       body: JSON.stringify({
         hint: params.hint,
         text: params.text,
+        image: params.image,
         patientName: params.patientName,
         language: params.language,
         apiKey: config.geminiApiKey || config.openaiApiKey,
@@ -326,11 +328,23 @@ export async function analyzeMedicalReportWithAi(params: {
   // 2. Direct Gemini Call if user provided API key in frontend
   if (config.geminiApiKey) {
     try {
+      const parts: any[] = [];
+      if (params.image && params.image.includes('base64,')) {
+        parts.push({
+          inlineData: {
+            mimeType: params.image.split(';')[0].replace('data:', '') || 'image/jpeg',
+            data: params.image.split('base64,')[1]
+          }
+        });
+      }
+
       const prompt = `You are a clinical pathologist. Extract this report into pure JSON:
 Hint: ${params.hint}
 Content: ${params.text || ''}
 Patient: ${params.patientName || 'Patient'}
 Schema: { "testType": "", "patientName": "", "reportDate": "", "summary": "", "mainPoints": [], "overallStatus": "Normal"|"Needs Attention"|"Critical", "vitalsAndValues": [{ "test": "", "value": "", "unit": "", "referenceRange": "", "flag": "Normal"|"High"|"Low", "simpleExplanation": "" }], "questionsForDoctor": [], "lifestyleAdvice": [] }`;
+
+      parts.push({ text: prompt });
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.geminiApiKey}`,
@@ -338,7 +352,7 @@ Schema: { "testType": "", "patientName": "", "reportDate": "", "summary": "", "m
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
+            contents: [{ parts }],
             generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
           })
         }
@@ -375,6 +389,7 @@ Schema: { "testType": "", "patientName": "", "reportDate": "", "summary": "", "m
 export async function analyzeMedicineWithAi(params: {
   query?: string;
   hint?: string;
+  image?: string;
   language?: string;
 }): Promise<MedicineItem> {
   const config = getAiConfig();
@@ -388,6 +403,7 @@ export async function analyzeMedicineWithAi(params: {
       body: JSON.stringify({
         query: params.query,
         hint: params.hint,
+        image: params.image,
         apiKey: config.geminiApiKey || config.openaiApiKey,
         provider: config.provider === 'chatgpt' ? 'chatgpt' : 'gemini'
       })
@@ -406,9 +422,19 @@ export async function analyzeMedicineWithAi(params: {
   // 2. Direct Gemini Call if user provided API key in frontend
   if (config.geminiApiKey) {
     try {
+      const parts: any[] = [];
+      if (params.image && params.image.includes('base64,')) {
+        parts.push({
+          inlineData: {
+            mimeType: params.image.split(';')[0].replace('data:', '') || 'image/jpeg',
+            data: params.image.split('base64,')[1]
+          }
+        });
+      }
+
       const prompt = `You are a clinical pharmacologist.
-Analyze this medicine: "${searchTarget}"
-Return pure JSON with:
+Inspect this photo or medicine query: "${searchTarget}"
+Identify the exact medicine and return pure JSON with:
 {
   "brandName": "string",
   "genericName": "string",
@@ -426,13 +452,15 @@ Return pure JSON with:
   "similarSoundingMeds": ["string"]
 }`;
 
+      parts.push({ text: prompt });
+
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.geminiApiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
+            contents: [{ parts }],
             generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
           })
         }
