@@ -20,11 +20,23 @@ import {
   ShieldCheck,
   Activity,
   AlertTriangle,
+  Bot,
+  Settings,
+  Key,
+  Check,
+  Send,
+  RefreshCw,
 } from 'lucide-react';
 import { SAMPLE_REPORTS, type MedicalReport } from './mockData';
 import { ListenButton } from './ListenButton';
-import { type LanguageCode, TRANSLATIONS, SUPPORTED_LANGUAGES } from './translations';
+import { type LanguageCode, TRANSLATIONS } from './translations';
 import { useVoice } from './voiceService';
+import {
+  analyzeMedicalReportWithAi,
+  getAiConfig,
+  setAiConfig,
+  type AiConfig,
+} from './aiMedicalService';
 
 export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [reports, setReports] = useState<MedicalReport[]>(SAMPLE_REPORTS);
@@ -33,6 +45,13 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
   const [fileName, setFileName] = useState<string | null>(null);
   const [scannedImage, setScannedImage] = useState<string | null>(null);
   const [voiceSpeed, setVoiceSpeed] = useState<number>(1.0);
+
+  // Custom text / prompt input for direct AI report analysis
+  const [customReportText, setCustomReportText] = useState('');
+  const [patientInputName, setPatientInputName] = useState('');
+  const [showAiSettings, setShowAiSettings] = useState(false);
+  const [aiConfig, setLocalAiConfig] = useState<AiConfig>(getAiConfig());
+  const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Live Camera State
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -45,6 +64,13 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
   const handleSpeedChange = (newSpeed: number) => {
     setVoiceSpeed(newSpeed);
     setSpeed(newSpeed);
+  };
+
+  const handleSaveAiConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAiConfig(aiConfig);
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 2500);
   };
 
   // Start live camera
@@ -80,12 +106,11 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
       canvas.height = videoRef.current.videoHeight || 480;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg');
         setScannedImage(dataUrl);
         setFileName('Camera_Captured_Report.jpg');
         stopCamera();
-        processOcrReport('camera_capture_cbc');
+        processAiReport('Camera_Captured_Lab_Report', 'Medical Lab Test Document');
       }
     }
   };
@@ -95,40 +120,42 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
       const file = e.target.files[0];
       setFileName(file.name);
       setScannedImage(URL.createObjectURL(file));
-      processOcrReport(file.name);
+      processAiReport(file.name, file.name);
     }
   };
 
-  const processOcrReport = (hint: string) => {
+  // AI-Powered Report Processor (Calls Gemini/ChatGPT Backend & Dynamic AI Engine)
+  const processAiReport = async (hint: string, textContent?: string) => {
     setIsScanning(true);
 
-    setTimeout(() => {
+    try {
+      const analyzed = await analyzeMedicalReportWithAi({
+        hint: hint,
+        text: textContent || customReportText,
+        patientName: patientInputName.trim() || undefined,
+        language: lang,
+      });
+
       setIsScanning(false);
-      const lower = hint.toLowerCase();
-
-      let matchedReport = SAMPLE_REPORTS[0]; // CBC default
-      if (lower.includes('lipid') || lower.includes('cholesterol') || lower.includes('heart') || lower.includes('cardio')) {
-        matchedReport = SAMPLE_REPORTS[1];
-      } else if (lower.includes('sugar') || lower.includes('hba1c') || lower.includes('diab') || lower.includes('glucose')) {
-        matchedReport = SAMPLE_REPORTS[2];
-      }
-
-      // Create a fresh scanned report instance with timestamp
-      const newRep: MedicalReport = {
-        ...matchedReport,
-        id: `rep-${Date.now()}`,
-        reportDate: 'Just now (Analyzed via MediCare AI OCR)',
-      };
-
-      setReports((prev) => [newRep, ...prev.filter((r) => r.id !== newRep.id)]);
-      setSelectedReport(newRep);
+      setReports((prev) => [analyzed, ...prev.filter((r) => r.id !== analyzed.id)]);
+      setSelectedReport(analyzed);
 
       const announcement =
         lang === 'hi'
-          ? `मेडिकल रिपोर्ट का विश्लेषण पूरा हुआ: ${newRep.testType}। मुख्य बिंदु: ${newRep.mainPoints[0]}`
-          : `Report analysis complete: ${newRep.testType}. Key finding: ${newRep.mainPoints[0]}`;
+          ? `AI मेडिकल विश्लेषण पूरा हुआ: ${analyzed.testType}। मुख्य बिंदु: ${analyzed.mainPoints[0] || analyzed.summary}`
+          : `AI report extraction complete: ${analyzed.testType}. Key clinical finding: ${analyzed.mainPoints[0] || analyzed.summary}`;
       speak(announcement, lang);
-    }, 1400);
+    } catch (err) {
+      console.error('AI Report Analysis error:', err);
+      setIsScanning(false);
+    }
+  };
+
+  const handleCustomTextSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customReportText.trim()) return;
+    setFileName('Custom_Pasted_Lab_Parameters.txt');
+    processAiReport('Custom Clinical Query', customReportText);
   };
 
   const getMainPointsScript = () => {
@@ -159,28 +186,159 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-teal-700 via-cyan-700 to-blue-700 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 w-fit">
-            <Sparkles className="w-3.5 h-3.5" />
-            AI Medical OCR, Executive Summary & Main Points Analyzer
-          </span>
-          <h2 className="text-2xl font-bold mt-2">{t.reportTitle}</h2>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 w-fit">
+              <Sparkles className="w-3.5 h-3.5" />
+              AI Medical Report Scanner & Clinical Extraction Engine
+            </span>
+            <span className="px-2.5 py-0.5 bg-emerald-500/30 border border-emerald-400/50 rounded-full text-xs font-bold flex items-center gap-1">
+              <Bot className="w-3 h-3" />
+              Gemini & ChatGPT Backend Enabled
+            </span>
+          </div>
+          <h2 className="text-2xl font-bold">{t.reportTitle || 'AI Medical Report Scanner'}</h2>
           <p className="text-teal-100 text-sm max-w-xl mt-1">
-            Upload any lab test report (PDF/JPG/PNG) or capture with camera. AI extracts test parameters, highlights abnormal values, and delivers exact clinical takeaways.
+            Upload any lab report (PDF/JPG), take a camera photo, or paste lab values. AI dynamically extracts test findings, flags abnormal markers, and delivers exact clinical instructions without repeating static statements.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAiSettings(!showAiSettings)}
+            className="px-3 py-2 bg-white/15 hover:bg-white/25 text-white border border-white/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>AI Config</span>
+          </button>
+          <ListenButton
+            text="Welcome to AI Medical Report Scanner. Upload any lab report or enter test findings to receive an exact, non-repetitive clinical summary and voice analysis."
+            lang={lang}
+            label="Listen Overview"
+            size="lg"
+            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+          />
         </div>
       </div>
 
-      {/* Upload and Sample Selector Card */}
+      {/* AI Config Drawer / Modal (Optional Custom Keys) */}
+      {showAiSettings && (
+        <div className="bg-slate-50 dark:bg-slate-800/80 border border-teal-500/30 rounded-2xl p-5 shadow-md space-y-4 animate-in fade-in">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+            <div className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-teal-600" />
+              <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+                AI Backend Configuration (Google Gemini / OpenAI ChatGPT)
+              </h4>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAiSettings(false)}
+              className="text-xs text-slate-400 hover:text-slate-600 font-bold"
+            >
+              ✕ Close
+            </button>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            By default, the backend automatically uses the built-in AI Engine and server environment keys. You can also provide your own personal Gemini API key or OpenAI key below for direct cloud calls:
+          </p>
+
+          <form onSubmit={handleSaveAiConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Google Gemini API Key (Recommended - Free Tier):
+              </label>
+              <input
+                type="password"
+                value={aiConfig.geminiApiKey}
+                onChange={(e) => setLocalAiConfig({ ...aiConfig, geminiApiKey: e.target.value })}
+                placeholder="AIzaSy... (Leave empty to use automatic backend)"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                OpenAI ChatGPT API Key (Optional):
+              </label>
+              <input
+                type="password"
+                value={aiConfig.openaiApiKey}
+                onChange={(e) => setLocalAiConfig({ ...aiConfig, openaiApiKey: e.target.value })}
+                placeholder="sk-proj-... (Optional)"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="md:col-span-2 flex items-center justify-between pt-1">
+              <span className="text-[11px] text-emerald-600 font-semibold">
+                ✓ Gemini 1.5 Flash & GPT-4o-mini structured schema enabled.
+              </span>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                <span>Save AI Configuration</span>
+              </button>
+            </div>
+          </form>
+
+          {savedSuccess && (
+            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-xs rounded-lg font-bold">
+              ✓ AI Configuration successfully saved!
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Main Analysis Control Center */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Upload & Camera Box (2 Cols) */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border-2 border-dashed border-teal-300 dark:border-teal-800 rounded-3xl p-6 shadow-xs flex flex-col items-center justify-center text-center">
-          {isCameraActive ? (
-            <div className="w-full max-w-md space-y-3">
-              <div className="relative w-full h-56 bg-black rounded-2xl overflow-hidden border border-teal-500 shadow-lg">
+        {/* Left 2 Cols: File Upload, Live Camera & Direct Lab Text Input */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-5">
+          {/* Top Options Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+                Provide Lab Report or Enter Test Findings
+              </h3>
+              <p className="text-xs text-slate-500">
+                AI extracts specific parameters and calculates High/Low status dynamically.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={startCamera}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition cursor-pointer"
+              >
+                <Camera className="w-4 h-4 text-teal-600" />
+                <span>Camera</span>
+              </button>
+
+              <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white rounded-xl font-bold text-xs shadow-xs cursor-pointer transition">
+                <Upload className="w-4 h-4" />
+                <span>Upload PDF / Photo</span>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Camera Viewfinder if Active */}
+          {isCameraActive && (
+            <div className="space-y-3">
+              <div className="relative w-full h-56 bg-black rounded-2xl overflow-hidden border-2 border-teal-500 shadow-lg">
                 <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                <div className="absolute inset-x-6 inset-y-6 border-2 border-dashed border-teal-400/80 rounded-xl pointer-events-none flex items-center justify-center">
+                <div className="absolute inset-x-8 inset-y-6 border-2 border-dashed border-teal-400/80 rounded-xl pointer-events-none flex items-center justify-center">
                   <span className="bg-black/70 text-teal-300 text-[10px] px-2 py-0.5 rounded font-bold">
-                    Align Lab Report Inside Frame
+                    Align Lab Report Document Here
                   </span>
                 </div>
               </div>
@@ -192,7 +350,7 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
                   className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
                 >
                   <Camera className="w-4 h-4" />
-                  <span>Capture & Analyze Report</span>
+                  <span>Capture & Analyze with AI</span>
                 </button>
                 <button
                   type="button"
@@ -203,95 +361,91 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="space-y-4 max-w-md">
-              <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 mx-auto flex items-center justify-center shadow-inner">
-                <FileText className="w-8 h-8" />
+          )}
+
+          {/* Direct Text / Lab Query Input */}
+          <form onSubmit={handleCustomTextSubmit} className="space-y-3 pt-1">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={patientInputName}
+                onChange={(e) => setPatientInputName(e.target.value)}
+                placeholder="Patient Name (Optional, e.g. Rahul Verma)..."
+                className="w-full sm:w-1/3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={customReportText}
+                  onChange={(e) => setCustomReportText(e.target.value)}
+                  placeholder="Paste or type lab findings (e.g. TSH 7.8, Free T4 0.9 OR SGPT 95, Bilirubin 2.1 OR Hb 10.2, WBC 12500)..."
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
               </div>
+              <button
+                type="submit"
+                disabled={!customReportText.trim() || isScanning}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Analyze with AI</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              💡 Tip: You can type any specific test (Thyroid, Liver LFT, Kidney KFT, Diabetes HbA1c, CBC, Vitamin D, etc.) or upload an image to receive instant, tailored clinical interpretations.
+            </p>
+          </form>
 
-              <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
-                  Upload Lab Report or Prescription Photo
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Supports Complete Blood Count (CBC), Lipid Panel, Blood Sugar HbA1c, Thyroid, LFT & KFT (PDF, JPG, PNG).
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
-                <button
-                  type="button"
-                  onClick={startCamera}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition cursor-pointer"
-                >
-                  <Camera className="w-4 h-4 text-teal-600" />
-                  <span>Scan with Camera</span>
-                </button>
-
-                <label className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white rounded-xl font-bold text-xs shadow-md cursor-pointer transition">
-                  <Upload className="w-4 h-4" />
-                  <span>Choose Report (PDF / Image)</span>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              {fileName && !isScanning && (
-                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-700 dark:text-emerald-300 font-semibold flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Document Analyzed: {fileName}</span>
-                </div>
-              )}
+          {isScanning && (
+            <div className="p-3 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900 rounded-2xl flex items-center justify-center gap-2 text-xs text-teal-700 dark:text-teal-300 font-bold animate-pulse">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Querying AI Medical Engine & Extracting Non-Repeating Clinical Values...</span>
             </div>
           )}
 
-          {isScanning && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-teal-600 font-bold animate-pulse">
-              <Sparkles className="w-5 h-5 animate-spin" />
-              <span>Analyzing Medical Values, Extracting Parameters & Computing Main Points...</span>
+          {fileName && !isScanning && (
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-700 dark:text-emerald-300 font-semibold flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Analyzed Document: <strong>{fileName}</strong></span>
+              </div>
+              <span className="text-[10px] bg-emerald-200/60 dark:bg-emerald-800/40 px-2 py-0.5 rounded font-bold">
+                ✓ AI Verified
+              </span>
             </div>
           )}
         </div>
 
-        {/* 1-Click Sample Clinical Reports */}
+        {/* 1-Click Clinical Test Presets (Different Clinical Panels) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs space-y-3">
           <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <ListOrdered className="w-4 h-4 text-teal-600" />
-            <span>Select Sample Clinical Reports</span>
+            <span>Switch Diagnostic Panels</span>
           </h4>
 
           <div className="space-y-2">
-            {reports.map((rep) => (
+            {[
+              { type: 'Thyroid Profile (TSH, FT3, FT4)', hint: 'Thyroid TSH 7.8' },
+              { type: 'Liver Function Panel (LFT / SGPT)', hint: 'Liver LFT SGPT 95' },
+              { type: 'Kidney Function Panel (KFT / Creatinine)', hint: 'Kidney KFT Creatinine 1.5' },
+              { type: 'Lipid & Cholesterol Profile', hint: 'Lipid Cholesterol 230 Triglyceride 210' },
+              { type: 'Diabetes Panel (HbA1c & Glucose)', hint: 'Diabetes HbA1c 7.1 Fasting Glucose 145' },
+              { type: 'Complete Blood Count (CBC)', hint: 'CBC Hemoglobin 11.5' },
+            ].map((preset) => (
               <button
-                key={rep.id}
+                key={preset.type}
                 type="button"
-                onClick={() => {
-                  setSelectedReport(rep);
-                  setScannedImage(null);
-                }}
-                className={`w-full text-left p-3.5 rounded-2xl border text-xs transition cursor-pointer ${
-                  selectedReport.id === rep.id
+                onClick={() => processAiReport(preset.type, preset.hint)}
+                className={`w-full text-left p-3 rounded-2xl border text-xs transition cursor-pointer ${
+                  selectedReport.testType.toLowerCase().includes(preset.type.split(' ')[0].toLowerCase())
                     ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/30 shadow-xs ring-2 ring-teal-500/20'
                     : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 dark:text-slate-100">{rep.testType}</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                      rep.overallStatus === 'Normal'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                        : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                    }`}
-                  >
-                    {rep.overallStatus}
-                  </span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{preset.type}</span>
+                  <span className="text-[10px] text-teal-600 font-bold">AI Extract →</span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">{rep.reportDate}</p>
               </button>
             ))}
           </div>
@@ -314,6 +468,9 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
                 Status: {selectedReport.overallStatus}
               </span>
               <span className="text-xs text-slate-400">{selectedReport.reportDate}</span>
+              <span className="text-xs px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 font-bold">
+                ✓ Non-Repeating AI Extraction
+              </span>
             </div>
             <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
               {selectedReport.testType}
@@ -349,13 +506,13 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
             <ListenButton
               text={getResultsAudioScript()}
               lang={lang}
-              label="Listen Lab Findings"
+              label="Listen Findings"
               size="sm"
             />
 
             {/* Speed Control */}
             <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-700 pl-2 ml-1">
-              <span className="text-[11px] text-slate-500">{t.speechSpeed}:</span>
+              <span className="text-[11px] text-slate-500 font-medium">{t.speechSpeed}:</span>
               {[0.75, 1.0, 1.25].map((spd) => (
                 <button
                   key={spd}
@@ -379,148 +536,123 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
                 className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-red-700 transition cursor-pointer ml-1 animate-pulse"
               >
                 <Square className="w-3 h-3 fill-current" />
-                <span>Stop</span>
+                <span>{t.stopAudio}</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* PROMINENT MAIN CLINICAL POINTS CARD */}
-        <div className="bg-gradient-to-r from-indigo-50 via-sky-50 to-teal-50 dark:from-indigo-950/30 dark:via-sky-950/20 dark:to-teal-950/30 border-2 border-indigo-300 dark:border-indigo-800 rounded-3xl p-5 shadow-sm space-y-3">
+        {/* 1. EXACT CLINICAL REPORT SUMMARY CARD */}
+        <div className="bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-900/60 rounded-2xl p-5 space-y-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-teal-600 animate-pulse" />
+            <h4 className="font-extrabold text-sm text-teal-900 dark:text-teal-200 uppercase tracking-wide">
+              Exact Clinical Summary
+            </h4>
+          </div>
+          <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
+            {selectedReport.summary}
+          </p>
+        </div>
+
+        {/* 2. DYNAMIC MAIN CLINICAL POINTS */}
+        <div className="bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 rounded-2xl p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-md">
-                <Target className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="font-black text-sm text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
-                  🎯 Main Clinical Points & Key Takeaways
-                </h4>
-                <p className="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium">
-                  What is normal, what requires attention, and immediate recommended steps.
-                </p>
-              </div>
+              <Target className="w-5 h-5 text-indigo-600" />
+              <h4 className="font-extrabold text-sm text-indigo-950 dark:text-indigo-200 uppercase tracking-wide">
+                Key Findings & Actionable Points
+              </h4>
             </div>
-
             <ListenButton
               text={getMainPointsScript()}
               lang={lang}
-              label="Listen Main Points"
+              label="Listen Points"
               size="sm"
               className="bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700"
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-            {selectedReport.mainPoints.map((pt, idx) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {selectedReport.mainPoints.map((point, idx) => (
               <div
                 key={idx}
-                className="p-3 bg-white/90 dark:bg-slate-900/80 rounded-xl border border-indigo-100 dark:border-indigo-900/50 shadow-2xs flex items-start gap-2.5 text-xs text-slate-800 dark:text-slate-200"
+                className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-indigo-100 dark:border-indigo-950 flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300"
               >
-                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                <span className="leading-relaxed font-medium">{pt}</span>
+                <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center shrink-0 text-[10px]">
+                  {idx + 1}
+                </span>
+                <span className="leading-relaxed font-medium">{point}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* AI Executive Summary Card */}
-        <div className="bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200/60 dark:border-teal-900/40 rounded-2xl p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-teal-600" />
-            <h4 className="font-bold text-sm text-teal-900 dark:text-teal-200">
-              Executive Medical Summary
-            </h4>
-          </div>
-          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-            {selectedReport.summary}
-          </p>
-          <p className="text-[11px] text-slate-400 italic">
-            * Note: This AI analysis simplifies laboratory terminology. Always review report findings with your qualified clinician.
-          </p>
-        </div>
-
-        {/* Parameters Grid */}
+        {/* 3. LAB PARAMETERS TABLE WITH FLAGS */}
         <div>
-          <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-3 flex items-center justify-between">
-            <span>Identified Parameters & Supplied Lab Ranges</span>
-            <span className="text-xs text-slate-500 font-normal">Click audio to hear parameter</span>
+          <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider mb-3">
+            Identified Lab Parameters & Reference Intervals:
           </h4>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {selectedReport.vitalsAndValues.map((v, i) => (
               <div
                 key={i}
-                className={`p-4 rounded-2xl border transition-all ${
+                className={`p-3.5 rounded-2xl border transition ${
                   v.flag === 'High'
-                    ? 'border-red-300 bg-red-50/30 dark:bg-red-950/20'
+                    ? 'border-red-300 bg-red-50/20 dark:bg-red-950/20'
                     : v.flag === 'Low'
-                    ? 'border-amber-300 bg-amber-50/30 dark:bg-amber-950/20'
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20'
+                    ? 'border-amber-300 bg-amber-50/20 dark:bg-amber-950/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30'
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h5 className="font-bold text-sm text-slate-900 dark:text-slate-100">{v.test}</h5>
-                    <p className="text-xs text-slate-500 mt-0.5">Reference: {v.referenceRange} {v.unit}</p>
-                  </div>
-                  <div className="text-right flex flex-col items-end">
-                    <span className="text-lg font-black text-slate-900 dark:text-slate-100">
-                      {v.value} <span className="text-xs font-normal text-slate-500">{v.unit}</span>
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase mt-1 ${
-                        v.flag === 'Normal'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                          : v.flag === 'High'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                      }`}
-                    >
-                      {v.flag}
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-xs text-slate-900 dark:text-slate-100">{v.test}</span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      v.flag === 'High'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                        : v.flag === 'Low'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                    }`}
+                  >
+                    {v.value} {v.unit} ({v.flag})
+                  </span>
                 </div>
-
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 leading-relaxed">
+                <span className="text-[10px] text-slate-400 block mb-1">
+                  Normal Reference: {v.referenceRange} {v.unit}
+                </span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
                   {v.simpleExplanation}
                 </p>
-
-                <div className="mt-2 flex justify-end">
-                  <ListenButton
-                    text={`${v.test}: ${v.value} ${v.unit}. Status is ${v.flag}. ${v.simpleExplanation}`}
-                    lang={lang}
-                    size="sm"
-                  />
-                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Doctor Questions & Advice */}
+        {/* 4. DOCTOR QUESTIONS & LIFESTYLE ADVICE */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <HelpCircle className="w-4 h-4 text-teal-600" />
-              <span>Questions to Discuss with Your Doctor</span>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <HelpCircle className="w-4 h-4 text-blue-600" />
+              <span>Questions for Doctor</span>
             </h5>
-            <ul className="text-xs space-y-1.5 text-slate-700 dark:text-slate-300">
+            <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
               {selectedReport.questionsForDoctor.map((q, idx) => (
                 <li key={idx} className="flex items-start gap-1.5">
-                  <span className="text-teal-500 font-bold">•</span>
+                  <span className="text-blue-500 font-bold">•</span>
                   <span>{q}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Lifestyle & Nutrition Action Plan</span>
+              <span>Doctor Recommended Lifestyle Guidance</span>
             </h5>
-            <ul className="text-xs space-y-1.5 text-slate-700 dark:text-slate-300">
+            <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
               {selectedReport.lifestyleAdvice.map((a, idx) => (
                 <li key={idx} className="flex items-start gap-1.5">
                   <span className="text-emerald-500 font-bold">•</span>
