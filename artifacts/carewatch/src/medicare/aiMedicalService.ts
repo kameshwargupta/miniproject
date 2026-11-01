@@ -657,9 +657,14 @@ export async function askCopilotChatWithAi(params: {
           messages: [
             {
               role: 'system',
-              content: `You are MediCare AI Copilot, a certified senior medical doctor and clinical pharmacologist. Answer in language: ${
+              content: `You are MediCare AI Copilot, a certified clinical healthcare specialist and doctor. Answer in language: ${
                 params.language || 'en'
-              }. Provide direct, empathetic, and exact medical advice, exact medicine uses and how-to-take directions, precautions, and warnings with clear markdown headers and bullet points.`,
+              }.
+CRITICAL INSTRUCTIONS:
+1. MAKE SENTENCES SMALL AND GIVE DIRECT-TO-DIRECT ANSWERS.
+2. For greetings ("Hi", "Hello", "How are you", "Namaste"), answer warmly and briefly in 1-2 sentences. Never diagnose a greeting!
+3. For medical or symptom questions, give 3 to 5 short, direct, actionable bullet points with exact medicine names, how-to-take directions, and precautions.
+4. Keep all sentences short, crisp, and direct to the point.`,
             },
             ...(params.history || []).slice(-6).map((h) => ({
               role: h.sender === 'ai' ? 'assistant' : 'user',
@@ -694,7 +699,10 @@ export async function askCopilotChatWithAi(params: {
       const prompt = `You are MediCare AI Copilot, a senior medical specialist.
 Answer user query in language: ${params.language || 'en'}.
 Query: "${params.message}"
-Provide exact clinical explanations, medicine names, indications, how-to-take, and lifestyle advice with clear markdown formatting.`;
+CRITICAL: MAKE SENTENCES SMALL AND GIVE DIRECT-TO-DIRECT ANSWERS.
+- If greeting ("Hi", "Hello"), reply warmly and briefly in 1-2 sentences.
+- If medical question, give 3 to 5 short, direct, actionable bullet points (immediate care, exact medicine name & how to take, diet/hydration, when to see a doctor).
+- No long essays or repetitive academic filler.`;
 
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.geminiApiKey}`,

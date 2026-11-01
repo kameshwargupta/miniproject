@@ -37,10 +37,65 @@ export interface Message {
   model?: string;
 }
 
-// Deep Clinical Health Intelligence Knowledge Base with Zero Repetition
+// Deep Clinical Health Intelligence Knowledge Base - Small Sentences & Direct-to-Direct Answers
 export const generateClinicalAnswer = (query: string, lang: LanguageCode): string => {
   const q = query.toLowerCase().trim();
   const isHi = lang === 'hi';
+
+  // 1. GREETINGS & CASUAL HELLO (Fixes "Hi" being diagnosed as a disease!)
+  if (
+    /^(hi|hello|hey|namaste|pranam|good\s*morning|good\s*evening|good\s*afternoon|kaise\s*ho|kese\s*ho|who\s*are\s*you)[!.,?]?$/i.test(
+      q
+    ) ||
+    q === 'hi' ||
+    q === 'hello' ||
+    q === 'hey' ||
+    q === 'hi.' ||
+    q === 'hello.'
+  ) {
+    if (isHi) {
+      return `👋 नमस्ते! मैं आपका **मेडीकेयर AI स्वास्थ्य सलाहकार** हूँ।\n\nआज मैं आपकी सेहत, बीमारी के लक्षण या दवाओं के बारे में क्या मदद कर सकता हूँ? कृपया अपनी समस्या बताएं।`;
+    }
+    return `👋 Hello! I am your **MediCare AI Health Assistant**.\n\nHow can I help you with your symptoms, medicines, or health today? Please ask your question.`;
+  }
+
+  // 2. THANKS & BYE
+  if (/^(thanks|thank\s*you|dhanyawad|shukriya|bye|goodbye|ok|okay)[!.,?]?$/i.test(q)) {
+    if (isHi) {
+      return `🙏 आपका स्वागत है! अपना ख्याल रखें। किसी भी स्वास्थ्य समस्या पर कभी भी पूछ सकते हैं। स्वस्थ रहें!`;
+    }
+    return `🙏 You're very welcome! Take care and feel free to ask anytime you need medical guidance. Stay healthy!`;
+  }
+
+  // 3. FEVER RECOVERY / HEALING FROM FEVER (Direct match for: "I am healing from fever. What I do at that time.")
+  if (
+    q.includes('healing') ||
+    q.includes('recovering') ||
+    q.includes('recovery') ||
+    (q.includes('fever') &&
+      (q.includes('after') ||
+        q.includes('weakness') ||
+        q.includes('theek') ||
+        q.includes('kamjori') ||
+        q.includes('what i do') ||
+        q.includes('what to do')))
+  ) {
+    if (isHi) {
+      return `🩺 **बुखार से ठीक होने के बाद देखभाल (सटीक सलाह):**
+• **खूब पानी पिएं:** दिन में 2.5–3 लीटर पानी, नारियल पानी या ORS पिएं ताकि कमजोरी दूर हो।
+• **हल्का खाना खाएं:** मूंग दाल खिचड़ी, दलिया, सूप और फल लें। तला-भुना और मसालेदार खाना न खाएं।
+• **पूरा आराम करें:** अगले 3-4 दिन भारी काम या व्यायाम न करें।
+• **दवा:** बुखार उतर चुका है तो पैरासिटामोल बंद कर दें। केवल डॉक्टर द्वारा बताई गई जरूरी दवाएं ही लें।
+• **डॉक्टर को कब दिखाएं:** यदि दोबारा बुखार आए या अत्यधिक कमजोरी 3 दिन से ज्यादा रहे।`;
+    }
+
+    return `🩺 **Quick Fever Recovery Guide (Direct Advice):**
+• **Rehydrate:** Drink 2.5 to 3 liters of fluids daily (water, coconut water, ORS) to regain lost energy.
+• **Eat Light:** Have soft, easily digestible foods like khichdi, vegetable soup, and fruits. Avoid oily or spicy meals.
+• **Take Rest:** Allow your body to recover. Avoid strenuous exercise or heavy physical work for 3–4 days.
+• **Medication:** Stop taking Paracetamol if your body temperature has returned to normal.
+• **When to see a doctor:** If fever relapses or extreme fatigue/body ache persists beyond 3 days.`;
+  }
 
   // =========================================================================
   // 1. EXACT PHARMACEUTICAL DRUG LOOKUP FROM 105 MEDICINES DATABASE
@@ -680,57 +735,29 @@ Review your animated queue journey and digital QR pass in the **Smart Queue** ta
   }
 
   // =========================================================================
-  // 17. DYNAMIC HIGH-INTELLIGENCE CLINICAL ANSWER FOR ANY GENERAL "WHAT..." OR HEALTH QUESTION
+  // 17. DIRECT-TO-DIRECT ANSWER FOR ANY GENERAL HEALTH QUESTION (SMALL SENTENCES)
   // =========================================================================
-  const cleanSubject = query
-    .replace(/what is|what are|what to take for|what causes|how to treat|how to cure|what|kya hai|kya kare/gi, '')
-    .trim() || query;
+  const cleanSubject =
+    query
+      .replace(
+        /what is|what are|what to take for|what causes|how to treat|how to cure|what|kya hai|kya kare|kya karu/gi,
+        ''
+      )
+      .trim() || query;
 
   if (isHi) {
-    return `🩺 **क्लिनिकल स्वास्थ्य परामर्श: "${cleanSubject}"**
-
-1. **चिकित्सीय अवलोकन (Medical Overview):**
-"${cleanSubject}" का सीधा संबंध शरीर की प्रतिरक्षा प्रणाली, चयापचय (Metabolism) या जीवनशैली के संतुलन से हो सकता है। किसी भी लक्षण का सटीक समय पर मूल्यांकन जटिलताओं को रोकता है।
-
-2. **संभावित कारण और ट्रिगर (Etiology & Causes):**
-• वायरल या जीवाणु संक्रमण
-• निर्जलीकरण (पानी की कमी) या पोषण की अपर्याप्तता
-• अत्यधिक मानसिक या शारीरिक तनाव और अनिद्रा
-• गलत खान-पान या पाचन तंत्र की संवेदनशीलता
-
-3. **सुरक्षित प्राथमिक कदम और घरेलू देखभाल (Immediate Safe Steps):**
-• प्रतिदिन कम से कम 2.5 से 3 लीटर ताजा पानी पिएं।
-• हल्का, सुपाच्य और ताजा पका हुआ भोजन लें।
-• 8 घंटे की भरपूर आरामदायक नींद लें।
-• किसी भी तीव्र दर्द में भोजन के बाद पैरासिटामोल 650mg ले सकते हैं।
-
-4. **डॉक्टर से परामर्श:**
-कोई भी एंटीबायोटिक या स्टेरॉयड दवा बिना डॉक्टर के प्रिस्क्रिप्शन के न लें। आप हमारे **Telemedicine** टैब से तुरंत विशेषज्ञ डॉक्टर के साथ लाइव वीडियो कॉल कर सकते हैं।
-
-⚠️ **आपातकालीन चेतावनी:** यदि सांस फूलने लगे, सीने में तेज दर्द हो या 102°F से अधिक बुखार रहे, तो तुरंत नजदीकी अस्पताल की इमरजेंसी में जाएं।`;
+    return `🩺 **"${cleanSubject}" के लिए सीधी व सटीक सलाह:**
+• **प्राथमिक कदम:** दिन में 2.5–3 लीटर ताजा पानी पिएं और पर्याप्त आराम लें।
+• **दवा की सावधानी:** बिना डॉक्टर की सलाह एंटीबायोटिक या तेज दवाएं न लें। हल्के दर्द या बुखार में भोजन के बाद पैरासिटामोल 650mg सुरक्षित है।
+• **आहार व परहेज:** हल्का, ताजा और सुपाच्य भोजन लें। अत्यधिक तेल-मसाले से बचें।
+• **डॉक्टर से संपर्क:** यदि समस्या 48 घंटे में ठीक न हो, तो ऊपर **Telemedicine** टैब से डॉक्टर के साथ वीडियो कॉल करें।`;
   }
 
-  return `🩺 **Clinical Assessment: "${cleanSubject}"**
-
-1. **Medical Overview & Pathophysiology:**
-Evaluating "${cleanSubject}" requires analyzing systemic physiological markers, immune response, and lifestyle triggers. Identifying primary etiologies early prevents secondary clinical complications.
-
-2. **Common Underlying Triggers & Causes:**
-• Acute viral, bacterial, or allergic mucosal inflammation
-• Dehydration, electrolyte depletion, or metabolic fluctuations
-• Prolonged physical fatigue, circadian disruption, or environmental stress
-• Gastrointestinal hypersensitivity or nutritional deficiencies
-
-3. **Immediate Evidence-Based Self-Care Regimen:**
-• **Hydration:** Maintain 2.5 to 3.0 Liters of fluids daily (warm water, electrolytes).
-• **Rest:** Prioritize 8 hours of restorative sleep in a quiet, dark environment.
-• **Nutrition:** Opt for easily digestible, nutrient-dense whole foods.
-• **First-Line Relief:** For acute discomfort, Paracetamol 650mg post-prandially provides safe symptomatic relief.
-
-4. **Professional Consultation:**
-Avoid self-prescribing antibiotics or scheduled medications. Connect immediately with board-certified medical specialists via encrypted video in the **Telemedicine** tab.
-
-⚠️ **Emergency Disclaimer:** If symptoms involve severe acute thoracic pain, respiratory compromise, or sudden neurological deficits, seek immediate hospital emergency care or call 112 / 108.`;
+  return `🩺 **Direct Clinical Guidance for "${cleanSubject}":**
+• **Immediate Step:** Drink 2.5 to 3 liters of water daily and ensure 7–8 hours of sound sleep.
+• **Medication Rule:** Avoid self-prescribing antibiotics. For general pain or mild fever, Paracetamol 650mg after food is safe.
+• **Dietary Advice:** Eat freshly cooked, easily digestible meals and avoid heavy, spicy foods.
+• **Consultation:** If symptoms persist beyond 48 hours, consult a physician or click the **Telemedicine** tab for a video call.`;
 };
 
 export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
