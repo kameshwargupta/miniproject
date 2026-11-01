@@ -597,3 +597,144 @@ Identify the exact medicine and return pure JSON with:
   // 3. Dynamic Global Pharmacology Engine
   return resolveGlobalMedicine(searchTarget);
 }
+
+// -----------------------------------------------------------------------------
+// MEDICARE AI COPILOT: CHATGPT & GEMINI BACKEND INTERACTION
+// -----------------------------------------------------------------------------
+export interface CopilotChatResponse {
+  reply: string;
+  source: 'chatgpt' | 'gemini' | 'dynamic-clinical-ai';
+  model?: string;
+}
+
+export async function askCopilotChatWithAi(params: {
+  message: string;
+  history?: Array<{ sender: 'user' | 'ai'; text: string }>;
+  language?: string;
+  fallbackGenerator?: (msg: string, lang: string) => string;
+}): Promise<CopilotChatResponse> {
+  const config = getAiConfig();
+
+  // 1. Try Backend /api/ai/copilot-chat (which connects to ChatGPT or Gemini)
+  try {
+    const res = await fetch('/api/ai/copilot-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: params.message,
+        history: params.history || [],
+        language: params.language || 'en',
+        apiKey: config.openaiApiKey || config.geminiApiKey,
+        provider: config.provider || 'auto',
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.reply && !data.fallback) {
+        return {
+          reply: data.reply,
+          source: data.source || (config.provider === 'chatgpt' ? 'chatgpt' : 'gemini'),
+          model: data.model,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Backend copilot chat endpoint unavailable, checking direct client keys:', err);
+  }
+
+  // 2. Direct OpenAI ChatGPT Call if user configured API key
+  if (config.openaiApiKey) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are MediCare AI Copilot, a certified senior medical doctor and clinical pharmacologist. Answer in language: ${
+                params.language || 'en'
+              }. Provide direct, empathetic, and exact medical advice, exact medicine uses and how-to-take directions, precautions, and warnings with clear markdown headers and bullet points.`,
+            },
+            ...(params.history || []).slice(-6).map((h) => ({
+              role: h.sender === 'ai' ? 'assistant' : 'user',
+              content: h.text,
+            })),
+            { role: 'user', content: params.message },
+          ],
+          temperature: 0.3,
+          max_tokens: 1000,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (text) {
+          return {
+            reply: text.trim(),
+            source: 'chatgpt',
+            model: 'GPT-4o-mini',
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Direct OpenAI client call failed:', e);
+    }
+  }
+
+  // 3. Direct Gemini Call if user configured API key
+  if (config.geminiApiKey) {
+    try {
+      const prompt = `You are MediCare AI Copilot, a senior medical specialist.
+Answer user query in language: ${params.language || 'en'}.
+Query: "${params.message}"
+Provide exact clinical explanations, medicine names, indications, how-to-take, and lifestyle advice with clear markdown formatting.`;
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 1000 },
+          }),
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          return {
+            reply: text.trim(),
+            source: 'gemini',
+            model: 'Gemini 1.5 Flash',
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Direct Gemini client call failed:', e);
+    }
+  }
+
+  // 4. Clinical Intelligence Fallback
+  if (params.fallbackGenerator) {
+    return {
+      reply: params.fallbackGenerator(params.message, params.language || 'en'),
+      source: 'dynamic-clinical-ai',
+      model: 'MediCare Clinical Intelligence Engine',
+    };
+  }
+
+  return {
+    reply: `Clinical evaluation for "${params.message}": Please consult with an in-person medical doctor or connect via the Telemedicine tab for a video consultation with a registered healthcare specialist.`,
+    source: 'dynamic-clinical-ai',
+  };
+}

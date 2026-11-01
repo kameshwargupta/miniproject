@@ -661,4 +661,135 @@ Output pure JSON only without markdown formatting.`;
   return res.json({ success: true, fallback: true });
 });
 
+// -----------------------------------------------------------------------------
+// POST /api/ai/copilot-chat
+// Full ChatGPT (OpenAI) & Google Gemini Medical Intelligence Endpoint
+// -----------------------------------------------------------------------------
+const COPILOT_LANGUAGES: Record<string, string> = {
+  en: 'English',
+  hi: 'Hindi (हिन्दी)',
+  bn: 'Bengali (বাংলা)',
+  te: 'Telugu (తెలుగు)',
+  mr: 'Marathi (मराठी)',
+  ta: 'Tamil (தமிழ்)',
+  gu: 'Gujarati (ગુજરાતી)',
+  ur: 'Urdu (اردو)',
+  kn: 'Kannada (ಕನ್ನಡ)',
+  or: 'Odia (ଓଡ଼ିଆ)',
+  pa: 'Punjabi (ਪੰਜਾਬੀ)',
+};
+
+router.post("/ai/copilot-chat", async (req: Request, res: Response) => {
+  const { message, history = [], language = 'en', apiKey, provider = 'auto' } = req.body;
+  const activeOpenAiKey = apiKey || process.env.OPENAI_API_KEY;
+  const activeGeminiKey = apiKey || process.env.GEMINI_API_KEY;
+  const langName = COPILOT_LANGUAGES[language] || 'English';
+
+  const systemPrompt = `You are MediCare AI Copilot, a certified senior medical practitioner, clinical pathologist, and clinical pharmacologist.
+You provide compassionate, medically exact, personalized, and authoritative healthcare answers.
+Language Requirement: Respond naturally, empathetically, and fluently in ${langName} (${language}). If queried in Hindi or Hinglish, respond in natural Hindi with standard medical terms.
+Clinical Instructions:
+1. Deliver a direct, medically sound answer addressing the user's specific symptom, disease, medicine, or health inquiry without repeating generic boilerplate.
+2. If discussing any medication: specify brand & generic names, therapeutic class, primary clinical uses, precise dosage & administration rules (relation to food, frequency, fluid intake), precautions, and warnings.
+3. If discussing symptoms or illness: explain likely causes, immediate first-aid / home comfort measures, dietary advice, and clear red-flag symptoms requiring urgent doctor visits.
+4. Format using clean Markdown with bold headings, emojis, and organized bullet points.
+5. Include a brief professional safety disclaimer advising in-person consultation or emergency services (112 / 108) when acute symptoms are present.`;
+
+  // 1. Try OpenAI ChatGPT if provider is chatgpt or auto
+  if ((provider === 'chatgpt' || provider === 'auto') && activeOpenAiKey) {
+    try {
+      const messages: any[] = [
+        { role: 'system', content: systemPrompt },
+        ...history.slice(-6).map((h: any) => ({
+          role: h.sender === 'ai' || h.role === 'assistant' ? 'assistant' : 'user',
+          content: h.text || h.content || ''
+        })),
+        { role: 'user', content: message }
+      ];
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${activeOpenAiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages,
+          temperature: 0.3,
+          max_tokens: 1000
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content;
+        if (reply) {
+          return res.json({
+            success: true,
+            reply: reply.trim(),
+            source: 'chatgpt',
+            model: 'GPT-4o-mini'
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("OpenAI Copilot chat failed, checking Gemini fallback:", err);
+    }
+  }
+
+  // 2. Try Google Gemini API if provider is gemini or auto
+  if ((provider === 'gemini' || provider === 'auto') && activeGeminiKey) {
+    try {
+      const contents: any[] = [
+        ...history.slice(-6).map((h: any) => ({
+          role: h.sender === 'ai' || h.role === 'assistant' || h.role === 'model' ? 'model' : 'user',
+          parts: [{ text: h.text || h.content || '' }]
+        })),
+        {
+          role: 'user',
+          parts: [{ text: `${systemPrompt}\n\nPatient Query:\n${message}` }]
+        }
+      ];
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeGeminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents,
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 1000
+            }
+          })
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (reply) {
+          return res.json({
+            success: true,
+            reply: reply.trim(),
+            source: 'gemini',
+            model: 'Gemini 1.5 Flash'
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Gemini Copilot chat failed, signaling client fallback:", err);
+    }
+  }
+
+  // 3. Fallback response signaling client to use local Clinical Intelligence Engine
+  return res.json({
+    success: true,
+    fallback: true,
+    source: 'dynamic-clinical-ai'
+  });
+});
+
 export default router;

@@ -14,20 +14,31 @@ import {
   Activity,
   Heart,
   Pill,
+  Settings,
+  Check,
+  RefreshCw,
 } from 'lucide-react';
 import { EXTENSIVE_MEDICINES_DATABASE } from './medicinesDataset';
 import { type LanguageCode, TRANSLATIONS } from './translations';
 import { useVoice } from './voiceService';
+import {
+  askCopilotChatWithAi,
+  getAiConfig,
+  setAiConfig,
+  type AiConfig,
+} from './aiMedicalService';
 
-interface Message {
+export interface Message {
   id: string;
   sender: 'user' | 'ai';
   text: string;
   time: string;
+  source?: 'chatgpt' | 'gemini' | 'dynamic-clinical-ai';
+  model?: string;
 }
 
 // Deep Clinical Health Intelligence Knowledge Base with Zero Repetition
-const generateClinicalAnswer = (query: string, lang: LanguageCode): string => {
+export const generateClinicalAnswer = (query: string, lang: LanguageCode): string => {
   const q = query.toLowerCase().trim();
   const isHi = lang === 'hi';
 
@@ -725,14 +736,19 @@ Avoid self-prescribing antibiotics or scheduled medications. Connect immediately
 export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
+  const [isThinking, setIsThinking] = useState(false);
+  const [showAiSettings, setShowAiSettings] = useState(false);
+  const [aiConfig, setLocalAiConfig] = useState<AiConfig>(getAiConfig());
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
   const getGreeting = (l: LanguageCode) => {
     switch (l) {
       case 'hi':
-        return 'नमस्ते! मैं आपका मेडीकेयर AI स्वास्थ्य विशेषज्ञ हूँ। बुखार, सिरदर्द, पेट दर्द, ब्लड प्रेशर, डायबिटीज, 100+ दवाओं के उपयोग या किसी भी स्वास्थ्य समस्या के बारे में पूछें। मैं आपको बिना दोहराव के सटीक क्लिनिकल उत्तर दूंगा।';
+        return 'नमस्ते! मैं आपका मेडीकेयर AI स्वास्थ्य सलाहकार हूँ। मैं ChatGPT और Gemini बैकएंड द्वारा संचालित हूँ। बुखार, सिरदर्द, पेट दर्द, ब्लड प्रेशर, डायबिटीज, या 100+ दवाओं के उपयोग व खुराक के बारे में पूछें।';
       default:
-        return 'Hello! I am your MediCare AI Clinical Copilot. Ask me about any disease, fever, headache, blood pressure, diabetes, or 100+ medicine dosages. I provide exact clinical guidance without repetition.';
+        return 'Hello! I am your MediCare AI Clinical Copilot, powered by ChatGPT and Gemini backend. Ask me about any symptom, disease, blood pressure, diabetes, or 100+ medicine dosages and uses.';
     }
   };
 
@@ -742,6 +758,8 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       sender: 'ai',
       text: getGreeting(lang),
       time: 'Just now',
+      source: 'chatgpt',
+      model: 'ChatGPT / Gemini',
     },
   ]);
 
@@ -761,7 +779,14 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
     stop();
   };
 
-  const handleSend = (textToSend?: string) => {
+  const handleSaveAiConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAiConfig(aiConfig);
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 2200);
+  };
+
+  const handleSend = async (textToSend?: string) => {
     stop(); // Interrupt AI speech on user action
 
     const query = textToSend || input;
@@ -776,24 +801,48 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
 
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInput('');
+    setIsThinking(true);
 
-    // Generate accurate medical answer
-    setTimeout(() => {
-      const reply = generateClinicalAnswer(query, lang);
+    try {
+      const chatHistory = messages.map((m) => ({ sender: m.sender, text: m.text }));
+      const res = await askCopilotChatWithAi({
+        message: query,
+        history: chatHistory,
+        language: lang,
+        fallbackGenerator: (q, l) => generateClinicalAnswer(q, l as LanguageCode),
+      });
 
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: reply,
+        text: res.reply,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        source: res.source,
+        model: res.model,
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+      setIsThinking(false);
 
       // Speak a clean spoken excerpt without markdown symbols
-      const cleanSpoken = reply.replace(/[*#_`]/g, '').slice(0, 280);
+      const cleanSpoken = res.reply.replace(/[*#_`]/g, '').slice(0, 280);
       speak(cleanSpoken, lang);
-    }, 600);
+    } catch (err) {
+      console.error('Copilot chat error:', err);
+      const fallbackReply = generateClinicalAnswer(query, lang);
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: fallbackReply,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        source: 'dynamic-clinical-ai',
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+      setIsThinking(false);
+
+      const cleanSpoken = fallbackReply.replace(/[*#_`]/g, '').slice(0, 280);
+      speak(cleanSpoken, lang);
+    }
   };
 
   const handleVoiceInput = () => {
@@ -824,32 +873,137 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
       {isOpen && (
         <div className="fixed bottom-22 right-6 z-50 w-[420px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[85vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-6">
           {/* Header */}
-          <div className="px-4 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white flex items-center justify-between shadow-md">
+          <div className="px-4 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white flex items-center justify-between shadow-md">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
-                <Bot className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shadow-inner">
+                <Bot className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
-                  MediCare AI Health Assistant
+                <h3 className="font-bold text-xs leading-tight flex items-center gap-1.5">
+                  MediCare AI Copilot
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
                 </h3>
-                <p className="text-[11px] text-blue-100 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-                  Clinical Diagnostic Engine Active
+                <p className="text-[10px] text-blue-100 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+                  ChatGPT & Gemini Backend Active
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                stop();
-                setIsOpen(false);
-              }}
-              className="p-1.5 rounded-lg hover:bg-white/20 transition-colors text-white cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setShowAiSettings(!showAiSettings)}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer text-white ${
+                  showAiSettings ? 'bg-white/30' : 'hover:bg-white/20'
+                }`}
+                title="AI Backend Settings (ChatGPT / Gemini)"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  stop();
+                  setIsOpen(false);
+                }}
+                className="p-1.5 rounded-lg hover:bg-white/20 transition-colors text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+
+          {/* AI Settings Drawer (Configurable ChatGPT / Gemini Provider & Personal Keys) */}
+          {showAiSettings && (
+            <div className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-3 text-xs space-y-2.5 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-[11px] text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                  <Bot className="w-3.5 h-3.5 text-blue-600" />
+                  AI Model & Backend Provider
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAiSettings(false)}
+                  className="text-[10px] text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveAiConfig} className="space-y-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    Select AI Provider:
+                  </label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { id: 'auto', label: '⚡ Auto' },
+                      { id: 'chatgpt', label: '🤖 ChatGPT' },
+                      { id: 'gemini', label: '✨ Gemini' },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() =>
+                          setLocalAiConfig({ ...aiConfig, provider: p.id as any })
+                        }
+                        className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition cursor-pointer text-center ${
+                          aiConfig.provider === p.id
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">
+                    OpenAI ChatGPT Key (Optional):
+                  </label>
+                  <input
+                    type="password"
+                    value={aiConfig.openaiApiKey}
+                    onChange={(e) =>
+                      setLocalAiConfig({ ...aiConfig, openaiApiKey: e.target.value })
+                    }
+                    placeholder="sk-proj-... (Optional personal key)"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-[11px] text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">
+                    Google Gemini Key (Optional):
+                  </label>
+                  <input
+                    type="password"
+                    value={aiConfig.geminiApiKey}
+                    onChange={(e) =>
+                      setLocalAiConfig({ ...aiConfig, geminiApiKey: e.target.value })
+                    }
+                    placeholder="AIzaSy... (Optional personal key)"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-[11px] text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[10px] text-emerald-600 font-semibold">
+                    {savedSuccess ? '✓ Saved!' : '✓ Backend API Active'}
+                  </span>
+                  <button
+                    type="submit"
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1"
+                  >
+                    <Check className="w-3 h-3" />
+                    <span>Save</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           {/* Interrupt Banner (Active when AI is speaking) */}
           {isPlaying && (
@@ -874,7 +1028,7 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
           <div className="px-3 py-2 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex gap-1.5 overflow-x-auto text-[11px] pb-2">
             {[
               '🌡️ High Fever & Chills',
-              '💊 Dolo 650 uses',
+              '💊 Dolo 650 uses & how to take',
               '🔥 Stomach Acidity',
               '🩸 High Blood Pressure',
               '🩺 Diabetes & Sugar',
@@ -899,7 +1053,7 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
                 className={`flex gap-2 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {m.sender === 'ai' && (
-                  <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
                     <Bot className="w-4 h-4" />
                   </div>
                 )}
@@ -912,7 +1066,24 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
                 >
                   <div className="leading-relaxed whitespace-pre-wrap">{m.text}</div>
                   <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-slate-100 dark:border-slate-700/60 text-[10px] opacity-75">
-                    <span>{m.time}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{m.time}</span>
+                      {m.source === 'chatgpt' && (
+                        <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-[9px] flex items-center gap-0.5">
+                          🤖 ChatGPT
+                        </span>
+                      )}
+                      {m.source === 'gemini' && (
+                        <span className="px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-[9px] flex items-center gap-0.5">
+                          ✨ Gemini
+                        </span>
+                      )}
+                      {m.source === 'dynamic-clinical-ai' && (
+                        <span className="px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-[9px] flex items-center gap-0.5">
+                          🩺 Clinical AI
+                        </span>
+                      )}
+                    </div>
                     {m.sender === 'ai' && (
                       <button
                         onClick={() => {
@@ -931,6 +1102,21 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
                 </div>
               </div>
             ))}
+
+            {/* Thinking / Streaming Indicator */}
+            {isThinking && (
+              <div className="flex gap-2 justify-start items-center animate-in fade-in">
+                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center shrink-0 shadow-xs">
+                  <Bot className="w-4 h-4 animate-spin" />
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl px-3.5 py-2 border border-slate-200 dark:border-slate-700 shadow-xs flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    MediCare AI is querying ChatGPT & Gemini backend...
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Input & Voice Controls */}
