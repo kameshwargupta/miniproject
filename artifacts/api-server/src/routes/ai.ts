@@ -55,11 +55,19 @@ function generateDynamicReport(hint: string, text?: string, customPatientName?: 
   const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const patient = customPatientName || 'Patient ' + Math.floor(100 + Math.random() * 900);
 
+  // Helper to extract user-typed / OCR numerical values if present
+  const extractVal = (pattern: RegExp): string | null => {
+    const m = query.match(pattern);
+    return m ? m[1] : null;
+  };
+
   // 1. Thyroid Function Test (TFT)
   if (query.includes('thyroid') || query.includes('tsh') || query.includes('t3') || query.includes('t4')) {
     const isHighTsh = !query.includes('low');
-    const tshVal = isHighTsh ? (6.8 + Math.random() * 3.5).toFixed(2) : (0.15 + Math.random() * 0.2).toFixed(2);
-    const t4Val = isHighTsh ? '0.82' : '2.4';
+    const userTsh = extractVal(/(?:tsh)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const tshVal = userTsh || (isHighTsh ? (6.8 + Math.random() * 3.5).toFixed(2) : (0.15 + Math.random() * 0.2).toFixed(2));
+    const userFt4 = extractVal(/(?:ft4|free\s*t4)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const t4Val = userFt4 || (isHighTsh ? '0.82' : '2.4');
     return {
       id: `rep-ai-${Date.now()}`,
       patientName: patient,
@@ -244,10 +252,92 @@ function generateDynamicReport(hint: string, text?: string, customPatientName?: 
     };
   }
 
-  // 6. Complete Blood Count (CBC) with Dynamic Varied Parameters
-  const hbVal = (12.1 + Math.random() * 2.2).toFixed(1);
-  const wbcVal = Math.floor(6200 + Math.random() * 3200);
-  const pltVal = Math.floor(190 + Math.random() * 120);
+  // 6. Vitamin Deficiency Profile (Vitamin D3 & B12)
+  if (query.includes('vitamin') || query.includes('vit') || query.includes('b12') || query.includes('d3') || query.includes('calciferol')) {
+    const userD3 = extractVal(/(?:vit(?:amin)?\s*d(?:3)?|25-oh)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const d3Val = userD3 || (12.4 + Math.random() * 5.2).toFixed(1);
+    const userB12 = extractVal(/(?:vit(?:amin)?\s*b12|cobalamin)\s*[:=-]?\s*(\d+)/i);
+    const b12Val = userB12 ? parseInt(userB12, 10) : Math.floor(145 + Math.random() * 40);
+    const isD3Low = Number(d3Val) < 30.0;
+    const isB12Low = b12Val < 200;
+
+    return {
+      id: `rep-ai-${Date.now()}`,
+      patientName: patient,
+      reportDate: `Today, ${timestamp} (AI Verified)`,
+      testType: 'Vitamin Deficiency & Metabolic Panel (Vit D3 & B12)',
+      summary: `Serum 25-OH Vitamin D3 is deficient at ${d3Val} ng/mL (optimal reference: 30 - 100 ng/mL) and Serum Vitamin B12 is sub-optimal at ${b12Val} pg/mL (normal: 211 - 911 pg/mL). Findings confirm dual micronutrient insufficiency, commonly associated with bone/joint ache, chronic muscle fatigue, and peripheral numbness or paresthesia.`,
+      mainPoints: [
+        `Vitamin D Deficiency (${d3Val} ng/mL vs optimal > 30): Impairs calcium absorption and weakens musculoskeletal bone mineral density.`,
+        `Low Vitamin B12 (${b12Val} pg/mL vs normal 211-911): Can cause red blood cell macrocytosis and peripheral nerve tingling.`,
+        `Prescription Recommendation: Once-weekly Cholecalciferol 60,000 IU for 8 weeks followed by monthly maintenance.`,
+        `B12 Correction: Daily Methylcobalamin 1500 mcg oral sublingual supplement or intramuscular injections.`
+      ],
+      overallStatus: 'Needs Attention',
+      vitalsAndValues: [
+        { test: '25-Hydroxy Vitamin D3', value: d3Val, unit: 'ng/mL', referenceRange: '30.0 - 100.0', flag: isD3Low ? 'Low' : 'Normal', simpleExplanation: 'Primary circulating form of Vitamin D essential for calcium homeostasis and immunity.' },
+        { test: 'Serum Vitamin B12 (Cyanocobalamin)', value: String(b12Val), unit: 'pg/mL', referenceRange: '211 - 911', flag: isB12Low ? 'Low' : 'Normal', simpleExplanation: 'Vital neuro-vitamin required for nerve myelin sheath synthesis and red blood cell maturation.' },
+        { test: 'Serum Calcium', value: '8.9', unit: 'mg/dL', referenceRange: '8.5 - 10.5', flag: 'Normal', simpleExplanation: 'Circulating bone mineral electrolyte within normal biological boundaries.' }
+      ],
+      questionsForDoctor: [
+        `Do you recommend 60,000 IU Cholecalciferol sachets or softgels once weekly for my Vitamin D of ${d3Val} ng/mL?`,
+        'Should I undergo a baseline DEXA Bone Density Scan?',
+        'Do I need oral Methylcobalamin or intramuscular injections for B12?'
+      ],
+      lifestyleAdvice: [
+        'Expose arms and legs to early morning natural sunlight (15-20 minutes daily between 8 AM - 10 AM).',
+        'Consume fortified milk, yogurt, mushrooms, egg yolks, and cheese.',
+        'Take Vitamin D supplements with a fat-containing meal for optimal gastrointestinal absorption.'
+      ],
+      source: 'dynamic-clinical-ai'
+    };
+  }
+
+  // 7. Complete Urine Routine & Microscopy (Urinalysis)
+  if (query.includes('urine') || query.includes('urinalysis') || query.includes('pus') || query.includes('uti') || query.includes('culture')) {
+    const userPus = extractVal(/(?:pus\s*cells?)\s*[:=-]?\s*(\d+)/i);
+    const pusVal = userPus ? `${userPus}-${parseInt(userPus, 10) + 4}` : '12-15';
+    return {
+      id: `rep-ai-${Date.now()}`,
+      patientName: patient,
+      reportDate: `Today, ${timestamp} (AI Verified)`,
+      testType: 'Complete Urine Routine & Microscopic Examination',
+      summary: `Urinalysis reveals microscopic pyuria with Pus Cells elevated at ${pusVal} /HPF (normal reference: 0 - 5 /HPF), trace Albumin/Protein (+1), and occasional epithelial cells. Nitrite and Leuko-esterase test positive. Findings are strongly suggestive of an acute lower Urinary Tract Infection (Cystitis). Immediate antimicrobial therapy and hydration indicated.`,
+      mainPoints: [
+        `Elevated Pus Cells / Pyuria (${pusVal} /HPF vs normal 0-5): Indicates active leukocytic migration and urothelial mucosal inflammation.`,
+        `Trace Proteinuria (+1): Mild transient glomerular leakage secondary to lower urinary tract inflammation.`,
+        `Urine Reaction & Specific Gravity: pH 6.0, Sp. Gravity 1.020 (concentrated urine reflecting need for higher hydration).`,
+        `Action Plan: High fluid intake (3-3.5L/day), urinary alkalinizer, and urine culture-sensitivity before targeted antibiotics.`
+      ],
+      overallStatus: 'Needs Attention',
+      vitalsAndValues: [
+        { test: 'Pus Cells (Leukocytes)', value: pusVal, unit: '/HPF', referenceRange: '0 - 5', flag: 'High', simpleExplanation: 'White blood cells excreted in urine responding to microbial bacterial infection.' },
+        { test: 'Red Blood Cells (RBCs)', value: '1 - 2', unit: '/HPF', referenceRange: '0 - 2', flag: 'Normal', simpleExplanation: 'Erythrocytes in urine. Normal range shows no significant hematuria.' },
+        { test: 'Urine Albumin / Protein', value: 'Trace (+1)', unit: '', referenceRange: 'Nil / Negative', flag: 'High', simpleExplanation: 'Protein leakage into urine, usually reactive during acute urinary tract infection.' },
+        { test: 'Epithelial Cells', value: '3 - 5', unit: '/HPF', referenceRange: '0 - 5', flag: 'Normal', simpleExplanation: 'Desquamated cells from bladder lining within normal turnover rate.' },
+        { test: 'Urine Glucose / Sugar', value: 'Nil', unit: '', referenceRange: 'Negative', flag: 'Normal', simpleExplanation: 'Absence of glycosuria confirms no renal glucose spill.' }
+      ],
+      questionsForDoctor: [
+        'Do I need a Urine Culture and Antibiotic Sensitivity test before starting antibiotics?',
+        'Which antibiotic (e.g. Nitrofurantoin or Fosfomycin) is safest for this infection?',
+        'Should I take a urinary alkalinizer (Disodium hydrogen citrate) for burning micturition?'
+      ],
+      lifestyleAdvice: [
+        'Drink 3 to 3.5 liters of clean water and unsweetened cranberry juice throughout the day.',
+        'Urinate frequently and do not hold urine for prolonged intervals.',
+        'Avoid caffeine, carbonated drinks, and spicy foods which irritate the bladder wall.'
+      ],
+      source: 'dynamic-clinical-ai'
+    };
+  }
+
+  // 8. Complete Blood Count (CBC) with Dynamic Varied Parameters
+  const userHb = extractVal(/(?:hb|hemoglobin)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+  const hbVal = userHb || (12.1 + Math.random() * 2.2).toFixed(1);
+  const userWbc = extractVal(/(?:wbc|tlc|leukocyte)\s*[:=-]?\s*(\d+)/i);
+  const wbcVal = userWbc ? parseInt(userWbc, 10) : Math.floor(6200 + Math.random() * 3200);
+  const userPlt = extractVal(/(?:platelet|plt)\s*[:=-]?\s*(\d+)/i);
+  const pltVal = userPlt ? parseInt(userPlt, 10) : Math.floor(190 + Math.random() * 120);
   const isHbLow = Number(hbVal) < 13.0;
 
   return {

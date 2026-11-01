@@ -40,15 +40,15 @@ import { useVoice } from './voiceService';
 
 export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [medicines] = useState<MedicineItem[]>(INITIAL_MEDICINES);
-  const [reports] = useState<MedicalReport[]>(SAMPLE_REPORTS);
+  const [reports] = useState<MedicalReport[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Scanning states: can be either 'medicine' or 'report'
   const [detectedType, setDetectedType] = useState<'medicine' | 'report'>('medicine');
   
-  // selectedMed starts as NULL so no pre-existing medicine is forced on load
+  // selectedMed & selectedReport start as NULL so no pre-existing item is forced on load
   const [selectedMed, setSelectedMed] = useState<MedicineItem | null>(null);
-  const [selectedReport, setSelectedReport] = useState<MedicalReport>(SAMPLE_REPORTS[0]);
+  const [selectedReport, setSelectedReport] = useState<MedicalReport | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
   const [scannedImage, setScannedImage] = useState<string | null>(null);
@@ -727,7 +727,21 @@ export const MedicineScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang 
       {/* ========================================================================= */}
       {/* CASE A: USER UPLOADED A MEDICAL REPORT -> SHOW EXACT CLINICAL REPORT SUMMARY */}
       {/* ========================================================================= */}
-      {detectedType === 'report' && (
+      {detectedType === 'report' && !selectedReport && (
+        <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-teal-300 dark:border-teal-800 rounded-2xl p-8 text-center space-y-3">
+          <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 flex items-center justify-center mx-auto">
+            <FileText className="w-6 h-6" />
+          </div>
+          <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+            No Medical Report Document Uploaded Yet
+          </h4>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Upload a lab report image/PDF or capture with camera above to see the exact AI clinical extraction and parameters.
+          </p>
+        </div>
+      )}
+
+      {detectedType === 'report' && selectedReport && (
         <div className="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-2xl p-6 shadow-md space-y-6 animate-in fade-in">
           {/* Report Header & Status */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">

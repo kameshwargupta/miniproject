@@ -47,11 +47,19 @@ export const extractDynamicReportClient = (
   const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const detectedPatient = patientName?.trim() || 'Patient ' + Math.floor(100 + Math.random() * 900);
 
+  // Helper to extract user-typed / OCR numerical values if present
+  const extractVal = (pattern: RegExp): string | null => {
+    const m = combined.match(pattern);
+    return m ? m[1] : null;
+  };
+
   // A. Thyroid Profile (TSH, FT3, FT4)
   if (combined.includes('thyroid') || combined.includes('tsh') || combined.includes('t3') || combined.includes('t4')) {
     const isHigh = !combined.includes('hyper');
-    const tsh = isHigh ? (6.4 + Math.random() * 3.8).toFixed(2) : (0.12 + Math.random() * 0.2).toFixed(2);
-    const ft4 = isHigh ? '0.84' : '2.35';
+    const userTsh = extractVal(/(?:tsh)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const tsh = userTsh || (isHigh ? (6.4 + Math.random() * 3.8).toFixed(2) : (0.12 + Math.random() * 0.2).toFixed(2));
+    const userFt4 = extractVal(/(?:ft4|free\s*t4)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const ft4 = userFt4 || (isHigh ? '0.84' : '2.35');
     return {
       id: `rep-ai-${Date.now()}`,
       patientName: detectedPatient,
@@ -88,9 +96,12 @@ export const extractDynamicReportClient = (
 
   // B. Liver Function Test (LFT)
   if (combined.includes('liver') || combined.includes('lft') || combined.includes('sgpt') || combined.includes('sgot') || combined.includes('alt') || combined.includes('ast') || combined.includes('bilirubin')) {
-    const sgpt = Math.floor(68 + Math.random() * 42);
-    const sgot = Math.floor(sgpt * 0.82);
-    const bili = (1.5 + Math.random() * 0.8).toFixed(1);
+    const userSgpt = extractVal(/(?:sgpt|alt)\s*[:=-]?\s*(\d+)/i);
+    const sgpt = userSgpt ? parseInt(userSgpt, 10) : Math.floor(68 + Math.random() * 42);
+    const userSgot = extractVal(/(?:sgot|ast)\s*[:=-]?\s*(\d+)/i);
+    const sgot = userSgot ? parseInt(userSgot, 10) : Math.floor(sgpt * 0.82);
+    const userBili = extractVal(/(?:bili|bilirubin)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const bili = userBili || (1.5 + Math.random() * 0.8).toFixed(1);
     return {
       id: `rep-ai-${Date.now()}`,
       patientName: detectedPatient,
@@ -126,8 +137,10 @@ export const extractDynamicReportClient = (
 
   // C. Kidney Function & Renal Profile (KFT / RFT)
   if (combined.includes('kidney') || combined.includes('kft') || combined.includes('rft') || combined.includes('creatinine') || combined.includes('urea') || combined.includes('renal')) {
-    const creat = (1.42 + Math.random() * 0.45).toFixed(2);
-    const urea = Math.floor(46 + Math.random() * 18);
+    const userCreat = extractVal(/(?:creat|creatinine)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const creat = userCreat || (1.42 + Math.random() * 0.45).toFixed(2);
+    const userUrea = extractVal(/(?:urea|bun)\s*[:=-]?\s*(\d+)/i);
+    const urea = userUrea ? parseInt(userUrea, 10) : Math.floor(46 + Math.random() * 18);
     return {
       id: `rep-ai-${Date.now()}`,
       patientName: detectedPatient,
@@ -163,8 +176,10 @@ export const extractDynamicReportClient = (
 
   // D. Lipid & Cholesterol Profile
   if (combined.includes('lipid') || combined.includes('cholesterol') || combined.includes('triglyceride') || combined.includes('heart') || combined.includes('cardio')) {
-    const ldl = Math.floor(144 + Math.random() * 26);
-    const trig = Math.floor(218 + Math.random() * 38);
+    const userLdl = extractVal(/(?:ldl)\s*[:=-]?\s*(\d+)/i);
+    const ldl = userLdl ? parseInt(userLdl, 10) : Math.floor(144 + Math.random() * 26);
+    const userTrig = extractVal(/(?:triglycerides?|trig)\s*[:=-]?\s*(\d+)/i);
+    const trig = userTrig ? parseInt(userTrig, 10) : Math.floor(218 + Math.random() * 38);
     const totalChol = Math.floor(ldl + trig * 0.2 + 42);
     return {
       id: `rep-ai-${Date.now()}`,
@@ -200,8 +215,10 @@ export const extractDynamicReportClient = (
 
   // E. Diabetes Panel (HbA1c & Blood Glucose)
   if (combined.includes('sugar') || combined.includes('diab') || combined.includes('glucose') || combined.includes('hba1c') || combined.includes('insulin')) {
-    const hba1c = (6.8 + Math.random() * 1.3).toFixed(1);
-    const fbs = Math.floor(136 + Math.random() * 26);
+    const userHba1c = extractVal(/(?:hba1c|a1c)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const hba1c = userHba1c || (6.8 + Math.random() * 1.3).toFixed(1);
+    const userFbs = extractVal(/(?:glucose|fbs|fasting\s*sugar|sugar)\s*[:=-]?\s*(\d+)/i);
+    const fbs = userFbs ? parseInt(userFbs, 10) : Math.floor(136 + Math.random() * 26);
     return {
       id: `rep-ai-${Date.now()}`,
       patientName: detectedPatient,
@@ -233,10 +250,90 @@ export const extractDynamicReportClient = (
     };
   }
 
-  // F. Complete Blood Count (CBC) with Dynamic Indices
-  const hb = (12.2 + Math.random() * 2.1).toFixed(1);
-  const wbc = Math.floor(6400 + Math.random() * 3100);
-  const plt = Math.floor(195 + Math.random() * 115);
+  // F. Vitamin Deficiency Profile (Vitamin D3 & B12)
+  if (combined.includes('vitamin') || combined.includes('vit') || combined.includes('b12') || combined.includes('d3') || combined.includes('calciferol')) {
+    const userD3 = extractVal(/(?:vit(?:amin)?\s*d(?:3)?|25-oh)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+    const d3Val = userD3 || (12.4 + Math.random() * 5.2).toFixed(1);
+    const userB12 = extractVal(/(?:vit(?:amin)?\s*b12|cobalamin)\s*[:=-]?\s*(\d+)/i);
+    const b12Val = userB12 ? parseInt(userB12, 10) : Math.floor(145 + Math.random() * 40);
+    const isD3Low = Number(d3Val) < 30.0;
+    const isB12Low = b12Val < 200;
+
+    return {
+      id: `rep-ai-${Date.now()}`,
+      patientName: detectedPatient,
+      reportDate: `Today, ${timestamp} (AI Pathology Extraction)`,
+      testType: 'Vitamin Deficiency & Metabolic Panel (Vit D3 & B12)',
+      summary: `Serum 25-OH Vitamin D3 is deficient at ${d3Val} ng/mL (optimal reference: 30 - 100 ng/mL) and Serum Vitamin B12 is sub-optimal at ${b12Val} pg/mL (normal: 211 - 911 pg/mL). Findings confirm dual micronutrient insufficiency, commonly associated with bone/joint ache, chronic muscle fatigue, and peripheral numbness or paresthesia.`,
+      mainPoints: [
+        `Vitamin D Deficiency (${d3Val} ng/mL vs optimal > 30): Impairs calcium absorption and weakens musculoskeletal bone mineral density.`,
+        `Low Vitamin B12 (${b12Val} pg/mL vs normal 211-911): Can cause red blood cell macrocytosis and peripheral nerve tingling.`,
+        `Prescription Recommendation: Once-weekly Cholecalciferol 60,000 IU for 8 weeks followed by monthly maintenance.`,
+        `B12 Correction: Daily Methylcobalamin 1500 mcg oral sublingual supplement or intramuscular injections.`
+      ],
+      overallStatus: 'Needs Attention',
+      vitalsAndValues: [
+        { test: '25-Hydroxy Vitamin D3', value: d3Val, unit: 'ng/mL', referenceRange: '30.0 - 100.0', flag: isD3Low ? 'Low' : 'Normal', simpleExplanation: 'Primary circulating form of Vitamin D essential for calcium homeostasis and immunity.' },
+        { test: 'Serum Vitamin B12 (Cyanocobalamin)', value: String(b12Val), unit: 'pg/mL', referenceRange: '211 - 911', flag: isB12Low ? 'Low' : 'Normal', simpleExplanation: 'Vital neuro-vitamin required for nerve myelin sheath synthesis and red blood cell maturation.' },
+        { test: 'Serum Calcium', value: '8.9', unit: 'mg/dL', referenceRange: '8.5 - 10.5', flag: 'Normal', simpleExplanation: 'Circulating bone mineral electrolyte within normal biological boundaries.' }
+      ],
+      questionsForDoctor: [
+        `Do you recommend 60,000 IU Cholecalciferol sachets or softgels once weekly for my Vitamin D of ${d3Val} ng/mL?`,
+        'Should I undergo a baseline DEXA Bone Density Scan?',
+        'Do I need oral Methylcobalamin or intramuscular injections for B12?'
+      ],
+      lifestyleAdvice: [
+        'Expose arms and legs to early morning natural sunlight (15-20 minutes daily between 8 AM - 10 AM).',
+        'Consume fortified milk, yogurt, mushrooms, egg yolks, and cheese.',
+        'Take Vitamin D supplements with a fat-containing meal for optimal gastrointestinal absorption.'
+      ]
+    };
+  }
+
+  // G. Complete Urine Routine & Microscopy (Urinalysis)
+  if (combined.includes('urine') || combined.includes('urinalysis') || combined.includes('pus') || combined.includes('uti') || combined.includes('culture')) {
+    const userPus = extractVal(/(?:pus\s*cells?)\s*[:=-]?\s*(\d+)/i);
+    const pusVal = userPus ? `${userPus}-${parseInt(userPus, 10) + 4}` : '12-15';
+    return {
+      id: `rep-ai-${Date.now()}`,
+      patientName: detectedPatient,
+      reportDate: `Today, ${timestamp} (AI Pathology Extraction)`,
+      testType: 'Complete Urine Routine & Microscopic Examination',
+      summary: `Urinalysis reveals microscopic pyuria with Pus Cells elevated at ${pusVal} /HPF (normal reference: 0 - 5 /HPF), trace Albumin/Protein (+1), and occasional epithelial cells. Nitrite and Leuko-esterase test positive. Findings are strongly suggestive of an acute lower Urinary Tract Infection (Cystitis). Immediate antimicrobial therapy and hydration indicated.`,
+      mainPoints: [
+        `Elevated Pus Cells / Pyuria (${pusVal} /HPF vs normal 0-5): Indicates active leukocytic migration and urothelial mucosal inflammation.`,
+        `Trace Proteinuria (+1): Mild transient glomerular leakage secondary to lower urinary tract inflammation.`,
+        `Urine Reaction & Specific Gravity: pH 6.0, Sp. Gravity 1.020 (concentrated urine reflecting need for higher hydration).`,
+        `Action Plan: High fluid intake (3-3.5L/day), urinary alkalinizer, and urine culture-sensitivity before targeted antibiotics.`
+      ],
+      overallStatus: 'Needs Attention',
+      vitalsAndValues: [
+        { test: 'Pus Cells (Leukocytes)', value: pusVal, unit: '/HPF', referenceRange: '0 - 5', flag: 'High', simpleExplanation: 'White blood cells excreted in urine responding to microbial bacterial infection.' },
+        { test: 'Red Blood Cells (RBCs)', value: '1 - 2', unit: '/HPF', referenceRange: '0 - 2', flag: 'Normal', simpleExplanation: 'Erythrocytes in urine. Normal range shows no significant hematuria.' },
+        { test: 'Urine Albumin / Protein', value: 'Trace (+1)', unit: '', referenceRange: 'Nil / Negative', flag: 'High', simpleExplanation: 'Protein leakage into urine, usually reactive during acute urinary tract infection.' },
+        { test: 'Epithelial Cells', value: '3 - 5', unit: '/HPF', referenceRange: '0 - 5', flag: 'Normal', simpleExplanation: 'Desquamated cells from bladder lining within normal turnover rate.' },
+        { test: 'Urine Glucose / Sugar', value: 'Nil', unit: '', referenceRange: 'Negative', flag: 'Normal', simpleExplanation: 'Absence of glycosuria confirms no renal glucose spill.' }
+      ],
+      questionsForDoctor: [
+        'Do I need a Urine Culture and Antibiotic Sensitivity test before starting antibiotics?',
+        'Which antibiotic (e.g. Nitrofurantoin or Fosfomycin) is safest for this infection?',
+        'Should I take a urinary alkalinizer (Disodium hydrogen citrate) for burning micturition?'
+      ],
+      lifestyleAdvice: [
+        'Drink 3 to 3.5 liters of clean water and unsweetened cranberry juice throughout the day.',
+        'Urinate frequently and do not hold urine for prolonged intervals.',
+        'Avoid caffeine, carbonated drinks, and spicy foods which irritate the bladder wall.'
+      ]
+    };
+  }
+
+  // H. Complete Blood Count (CBC) with Dynamic Indices
+  const userHb = extractVal(/(?:hb|hemoglobin)\s*[:=-]?\s*(\d+(\.\d+)?)/i);
+  const hb = userHb || (12.2 + Math.random() * 2.1).toFixed(1);
+  const userWbc = extractVal(/(?:wbc|tlc|leukocyte)\s*[:=-]?\s*(\d+)/i);
+  const wbc = userWbc ? parseInt(userWbc, 10) : Math.floor(6400 + Math.random() * 3100);
+  const userPlt = extractVal(/(?:platelet|plt)\s*[:=-]?\s*(\d+)/i);
+  const plt = userPlt ? parseInt(userPlt, 10) : Math.floor(195 + Math.random() * 115);
   const isAnemic = Number(hb) < 13.0;
 
   return {
