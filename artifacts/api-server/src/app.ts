@@ -62,4 +62,22 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// Serve compiled CareWatch frontend in production/Render environments
+const frontendDistCandidates = [
+  path.resolve(process.cwd(), "artifacts/carewatch/dist/public"),
+  path.resolve(import.meta.dirname, "../../carewatch/dist/public"),
+  path.resolve(import.meta.dirname, "../../../artifacts/carewatch/dist/public"),
+];
+
+for (const distPath of frontendDistCandidates) {
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api")) return next();
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+    break;
+  }
+}
+
 export default app;

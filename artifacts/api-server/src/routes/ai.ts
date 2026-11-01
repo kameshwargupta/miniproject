@@ -798,7 +798,27 @@ function getDirectClinicalAnswer(query: string, language: string = 'en'): string
       : `🩺 **Diabetes & Blood Sugar (Direct Advice):**\n• **Target:** Fasting 70-100 mg/dL, post-meal < 140 mg/dL.\n• **Medication:** Take Metformin (Glycomet) strictly with meals as prescribed.\n• **Diet:** Completely eliminate white sugar, sweets, and sodas; eat fiber-rich oats and vegetables.\n• **Low Sugar Alert:** If shaking or sweating occurs, immediately consume 1 spoon of sugar or candy.`;
   }
 
-  // 9. General Health Query
+  // 9. Foot/Leg Injury, Cut, Wound, Sprain ("pair me chot", "repair me chot", "chot lag gaya", "injury", "wound")
+  if (
+    q.includes('chot') ||
+    q.includes('chot lag') ||
+    q.includes('pair me') ||
+    q.includes('repair me') ||
+    q.includes('injury') ||
+    q.includes('wound') ||
+    q.includes('cut') ||
+    q.includes('moch') ||
+    q.includes('bleeding') ||
+    q.includes('tetanus') ||
+    q.includes('swelling') ||
+    q.includes('ghav')
+  ) {
+    return isHi
+      ? `🩺 **पैर में चोट और घाव की प्राथमिक चिकित्सा (सटीक सलाह):**\n• **सफाई:** घाव को साफ पानी या डेटॉल/सेवलोन से धीरे-धीरे धोएं ताकि धूल-मिट्टी हट जाए।\n• **मलहम:** घाव पर बीटाडीन (Betadine Ointment) या सोफ्रामाइसिन (Soframycin) लगाएं और साफ पट्टी बांधें।\n• **दर्द व सूजन की दवा:** दर्द और सूजन कम करने के लिए भोजन के बाद कॉम्बीफ्लेम (Combiflam) या पैरासिटामोल 650mg लें।\n• **टिटनेस का इंजेक्शन (TT):** यदि चोट लोहे, सड़क या गंदी जगह पर लगी है और पिछले 6 महीने में टिटनेस का टीका नहीं लगा, तो 24 घंटे में TT इंजेक्शन अवश्य लगवाएं।\n• **आराम:** पैर को तकिए पर थोड़ा ऊंचा रखें और 2-3 दिन भारी वजन न डालें।`
+      : `🩺 **Foot/Leg Injury & Wound Care (Direct Advice):**\n• **Clean the Wound:** Wash gently with clean water or antiseptic liquid (Dettol/Savlon) to remove dirt.\n• **Antiseptic Ointment:** Apply Betadine or Soframycin ointment and cover with a sterile bandage.\n• **Pain & Swelling Relief:** Take Paracetamol 650mg or Combiflam strictly after food for pain relief.\n• **Tetanus (TT) Shot:** If cut by rusty iron, road grit, or soil, get a Tetanus Toxoid (TT) injection within 24 hours.\n• **Rest & Elevate:** Elevate your leg on a pillow and avoid putting weight on it for 2–3 days.`;
+  }
+
+  // 10. General Health Query
   const clean = query.replace(/what is|what are|what to take for|what causes|how to treat|how to cure|what|kya hai|kya kare|kya karu/gi, '').trim() || query;
   return isHi
     ? `🩺 **"${clean}" के लिए सीधी व सटीक सलाह:**\n• **प्राथमिक कदम:** दिन में 2.5–3 लीटर ताजा पानी पिएं और पर्याप्त आराम लें।\n• **दवा की सावधानी:** बिना डॉक्टर की सलाह एंटीबायोटिक न लें। हल्के दर्द में भोजन के बाद पैरासिटामोल 650mg सुरक्षित है।\n• **आहार व परहेज:** हल्का, ताजा और सुपाच्य भोजन लें। अत्यधिक तेल-मसाले से बचें।\n• **डॉक्टर से संपर्क:** यदि समस्या 48 घंटे में ठीक न हो, तो **Telemedicine** टैब से डॉक्टर से परामर्श लें।`

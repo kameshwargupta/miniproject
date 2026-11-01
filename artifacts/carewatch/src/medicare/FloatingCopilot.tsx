@@ -422,6 +422,39 @@ ${matchedMedicine.warnings.map((w) => `• ${w}`).join('\n')}
   }
 
   // =========================================================================
+  // 10B. INJURY, WOUND, FOOT/LEG HURT, CUT & TETANUS ("chot", "pair me chot", "injury", "wound")
+  // =========================================================================
+  if (
+    q.includes('chot') ||
+    q.includes('chot lag') ||
+    q.includes('pair me') ||
+    q.includes('repair me') ||
+    q.includes('injury') ||
+    q.includes('wound') ||
+    q.includes('cut') ||
+    q.includes('moch') ||
+    q.includes('bleeding') ||
+    q.includes('tetanus') ||
+    q.includes('swelling') ||
+    q.includes('ghav')
+  ) {
+    if (isHi) {
+      return `🩺 **पैर में चोट और घाव की प्राथमिक चिकित्सा (सटीक सलाह):**
+• **सफाई:** घाव को साफ पानी या डेटॉल/सेवलोन से धीरे-धीरे धोएं ताकि धूल-मिट्टी हट जाए।
+• **मलहम:** घाव पर बीटाडीन (Betadine Ointment) या सोफ्रामाइसिन (Soframycin) लगाएं और साफ पट्टी बांधें।
+• **दर्द व सूजन की दवा:** दर्द और सूजन कम करने के लिए भोजन के बाद कॉम्बीफ्लेम (Combiflam) या पैरासिटामोल 650mg लें।
+• **टिटनेस का इंजेक्शन (TT):** यदि चोट लोहे, सड़क या गंदी जगह पर लगी है और पिछले 6 महीने में टिटनेस का टीका नहीं लगा, तो 24 घंटे में TT इंजेक्शन अवश्य लगवाएं।
+• **आराम:** पैर को तकिए पर थोड़ा ऊंचा रखें और 2-3 दिन भारी वजन न डालें।`;
+    }
+    return `🩺 **Foot/Leg Injury & Wound Care (Direct Advice):**
+• **Clean the Wound:** Wash gently with clean water or antiseptic liquid (Dettol/Savlon) to remove dirt.
+• **Antiseptic Ointment:** Apply Betadine or Soframycin ointment and cover with a sterile bandage.
+• **Pain & Swelling Relief:** Take Paracetamol 650mg or Combiflam strictly after food for pain relief.
+• **Tetanus (TT) Shot:** If cut by rusty iron, road grit, or soil, get a Tetanus Toxoid (TT) injection within 24 hours.
+• **Rest & Elevate:** Elevate your leg on a pillow and avoid putting weight on it for 2–3 days.`;
+  }
+
+  // =========================================================================
   // 11. ANEMIA, LOW HEMOGLOBIN, FATIGUE & WEAKNESS
   // =========================================================================
   if (
@@ -762,6 +795,9 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
               <div>
                 <h3 className="font-bold text-xs leading-tight flex items-center gap-1.5">
                   MediCare AI Copilot
+                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-900 font-black text-[9px] shadow-xs">
+                    v3.0 Live
+                  </span>
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
                 </h3>
                 <p className="text-[10px] text-blue-100 flex items-center gap-1">
