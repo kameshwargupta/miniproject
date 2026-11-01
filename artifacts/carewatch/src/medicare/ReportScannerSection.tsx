@@ -533,36 +533,7 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
                   </button>
                 </div>
 
-                <div className="pt-1">
-                  <span className="text-[10px] text-slate-400 font-medium block mb-1">
-                    Quick Test Focus Chips:
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {[
-                      'Complete Blood Count (CBC)',
-                      'Thyroid TSH Panel',
-                      'Liver Function LFT',
-                      'Kidney Function KFT',
-                      'Lipid Profile',
-                      'Diabetes HbA1c',
-                      'Vitamin D / B12',
-                      'Urine Routine',
-                    ].map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => {
-                          setTestFocusInput(chip);
-                          processAiReport(chip, chip, scannedImage || undefined);
-                        }}
-                        className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-teal-50 dark:hover:bg-teal-950 font-medium cursor-pointer transition border border-slate-200 dark:border-slate-700"
-                      >
-                        {chip}
-                      </button>
-                    ))}
-                  </div>
                 </div>
-              </div>
             </div>
           ) : (
             /* Clean Empty Guide when no document is loaded */
