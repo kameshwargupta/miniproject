@@ -170,29 +170,19 @@ ${matchedMedicine.warnings.map((w) => `• ${w}`).join('\n')}
     q.includes('viral')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (बुखार, टाइफाइड और वायरल संक्रमण):**
-शरीर का तापमान 98.6°F (37°C) से अधिक होना शरीर की प्रतिरक्षा प्रणाली का संक्रमण के विरुद्ध सक्रिय होने का संकेत है।
-
-💡 **सटीक उपचार और दवा लेने का नियम:**
-1. **दवा:** पैरासिटामोल 650mg (Dolo 650 / Calpol 650) भोजन के बाद 1 गोली लें। दो खुराकों में कम से कम 6 घंटे का अंतर रखें। 24 घंटे में 3 गोली से अधिक न लें।
-2. **हाइड्रेशन:** दिन में 3 लीटर तरल पदार्थ (इलेक्ट्राल ORS, नारियल पानी, गुनगुना पानी) पिएं ताकि डिहाइड्रेशन न हो।
-3. **घरेलू उपाय:** माथे और गर्दन पर सामान्य नल के पानी की ठंडी पट्टियां रखें। बर्फ या बहुत ठंडे पानी का प्रयोग न करें।
-4. **आहार:** हल्का और सुपाच्य भोजन (मूंग दाल खिचड़ी, दलिया, लौकी का सूप) लें।
-
-⚠️ **लाल चेतावनी (तुरंत डॉक्टर को दिखाएं):**
-यदि बुखार 102°F से अधिक हो, 3 दिनों से अधिक रहे, शरीर पर लाल चकत्ते आएं, या तेज कंपकंपी के साथ उल्टी हो, तो तुरंत सीबीसी (CBC), विडाल (Widal) और डेंगू एनएस1 जांच कराएं।`;
+      return `🩺 **बुखार और संक्रमण (सटीक सलाह):**
+• **दवा:** पैरासिटामोल 650mg (Dolo 650 / Calpol 650) भोजन के बाद लें। 6 घंटे का अंतर रखें (अधिकतम 3 गोली प्रतिदिन)।
+• **पानी:** दिन में 2.5–3 लीटर पानी, ORS या नारियल पानी पिएं।
+• **सिकाई:** माथे पर सामान्य पानी की ठंडी पट्टी रखें। बर्फ न लगाएं।
+• **आहार:** मूंग दाल खिचड़ी या पतला सूप लें। तला-भुना खाना न खाएं।
+• **डॉक्टर को कब दिखाएं:** यदि बुखार 102°F से अधिक हो या 3 दिन से ज्यादा रहे।`;
     }
-    return `🩺 **Clinical Assessment (Fever, Typhoid, Dengue & Viral Infection):**
-An oral temperature exceeding 99.5°F (37.5°C) indicates the immune system's active cytokine response fighting pathogens.
-
-💡 **Targeted Clinical Treatment & Regimen:**
-1. **First-Line Medication:** Paracetamol 650mg (Dolo 650 / Calpol 650) orally after a meal or light snack. Maintain strict 4 to 6 hours spacing between doses (maximum 3 tablets or 2000mg per 24 hours).
-2. **Hydration Protocol:** Drink 2.5 to 3 liters of fluids daily (Electral WHO-ORS, tender coconut water, warm broths) to sustain electrolyte balance.
-3. **Physical Cooling:** Apply room-temperature damp cloth sponging to forehead, neck, and axillae. Avoid ice packs.
-4. **Dietary Management:** Consume easily assimilated carbohydrates (rice gruel, strained vegetable soups, boiled eggs).
-
-⚠️ **Red Flag Indications (Seek Immediate Medical Care):**
-If fever exceeds 102°F, persists beyond 72 hours, or is accompanied by cutaneous petechiae/rashes, extreme abdominal rigidity, or intractable vomiting, obtain Complete Blood Count (CBC) and Dengue NS1/Typhoid tests promptly.`;
+    return `🩺 **Fever & Infection Care (Direct Advice):**
+• **Medication:** Paracetamol 650mg (Dolo / Calpol) after food (6 hours apart, max 3 tablets daily).
+• **Hydration:** Drink 2.5 to 3 liters of fluids (water, ORS, coconut water) daily.
+• **Cooling:** Sponge forehead with room-temperature damp cloth. Avoid ice.
+• **Diet:** Eat light foods like khichdi and warm vegetable soup.
+• **When to see a doctor:** If fever stays above 102°F or lasts beyond 3 days.`;
   }
 
   // =========================================================================
@@ -208,29 +198,19 @@ If fever exceeds 102°F, persists beyond 72 hours, or is accompanied by cutaneou
     q.includes('sinus')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (सिरदर्द और माइग्रेन):**
-सिरदर्द के प्रमुख कारण तनाव (Tension headache), पानी की कमी (Dehydration), स्क्रीन स्ट्रेन, साइनस रुकावट या माइग्रेन की संवहनी सूजन (Vascular inflammation) हैं।
-
-💡 **सटीक उपचार और त्वरित राहत:**
-1. **हाइड्रेशन:** तुरंत 2 बड़े गिलास (500ml) गुनगुना पानी पिएं।
-2. **विश्राम:** 20 मिनट के लिए शांत, अंधेरे कमरे में लेटें। स्क्रीन और मोबाइल की नीली रोशनी पूरी तरह बंद रखें।
-3. **दवा:** भोजन के बाद पैरासिटामोल 650mg (Dolo) या कॉम्बीफ्लेम (Combiflam - Ibuprofen + Paracetamol) लें। खाली पेट पेनकिलर कभी न लें।
-4. **सिकाई:** माइग्रेन के लिए माथे पर ठंडा पैक लगाएं; तनाव सिरदर्द के लिए गर्दन पर गर्म सिकाई करें।
-
-⚠️ **खतरे के संकेत:**
-यदि अचानक जीवन का सबसे तेज सिरदर्द (Thunderclap headache) हो, गर्दन में अकड़न आए, या बोलने/देखने में दिक्कत हो, तो तुरंत न्यूरोलॉजिस्ट से संपर्क करें।`;
+      return `🩺 **सिरदर्द और माइग्रेन (सटीक सलाह):**
+• **पानी:** तुरंत 2 बड़े गिलास गुनगुना पानी पिएं।
+• **आराम:** शांत, अंधेरे कमरे में 20 मिनट लेटें और मोबाइल स्क्रीन बंद रखें।
+• **दवा:** तेज दर्द में भोजन के बाद पैरासिटामोल 650mg लें। खाली पेट पेनकिलर न लें।
+• **सिकाई:** माइग्रेन में माथे पर ठंडा पैक लगाएं; तनाव में गर्दन पर गर्म सिकाई करें।
+• **चेतावनी:** अचानक तेज सिरदर्द, उल्टी या धुंधला दिखने पर तुरंत डॉक्टर को दिखाएं।`;
     }
-    return `🩺 **Clinical Assessment (Headache & Migraine):**
-Primary etiologies include muscle contraction tension, dehydration, vascular migraine pulsation, prolonged digital screen fatigue, or frontal sinusitis.
-
-💡 **Immediate Safe Clinical Care:**
-1. **Immediate Hydration:** Consume 500ml of water immediately; dehydration accounts for nearly 40% of acute episodic headaches.
-2. **Sensory Rest:** Rest for 20 minutes in a quiet, dark room away from computer screens and ambient fluorescent light.
-3. **Analgesic Administration:** Take Paracetamol 650mg or Ibuprofen 400mg strictly after food to safeguard gastric lining.
-4. **Targeted Relief:** Apply cold compress across frontal temples for throbbing migraine, or warm moist compress to posterior neck muscles for tension headache.
-
-⚠️ **Urgent Red Flags:**
-A sudden explosive "thunderclap" headache, accompanying nuchal rigidity (stiff neck), diplopia (double vision), or limb weakness requires emergency neurological evaluation.`;
+    return `🩺 **Headache & Migraine (Direct Advice):**
+• **Hydrate:** Drink 2 large glasses of warm water immediately.
+• **Rest:** Lie down in a quiet, dark room for 20 minutes away from screens.
+• **Medication:** Take Paracetamol 650mg after food if pain is severe.
+• **Compress:** Apply a cool pack to forehead for migraine, or warm compress to neck for tension.
+• **Warning:** Seek immediate medical care if accompanied by vomiting, stiff neck, or vision blur.`;
   }
 
   // =========================================================================
@@ -252,35 +232,19 @@ A sudden explosive "thunderclap" headache, accompanying nuchal rigidity (stiff n
     q.includes('bronchitis')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (खांसी, गले में खराश और सांस की नली का संक्रमण):**
-- **सूखी खांसी (Dry Cough):** गले में खुजली, एलर्जी और फेफड़ों की श्वासनली में सूजन।
-- **बलगम वाली खांसी (Wet Cough):** छाती में कफ का जमाव और सांस लेने में घरघराहट।
-
-💡 **सटीक उपचार और सावधानियां:**
-1. **नमक के पानी के गरारे:** दिन में 3 बार गुनगुने पानी में चुटकी भर सेंधा नमक डालकर गरारे करें।
-2. **भाप लेना (Steam Inhalation):** दिन में 2 बार 5-7 मिनट सादे पानी की भाप लें।
-3. **दवा:**
-   - सूखी खांसी: Ascoril D Plus या Benadryl DR सिरप (10ml दिन में 3 बार)।
-   - बलगम वाली खांसी: Ascoril LS सिरप (Levosalbutamol + Ambroxol) 10ml दिन में 3 बार।
-   - रात की एलर्जी और जुकाम: सोते समय Cetirizine 10mg लें।
-4. **घरेलू काढ़ा:** अदरक, तुलसी के पत्ते और 1 चम्मच शहद का सेवन करें।
-
-⚠️ **चेतावनी:** यदि खांसी में खून आए, सांस फूलने लगे या 2 सप्ताह से अधिक रहे, तो तुरंत छाती का एक्स-रे कराएं।`;
+      return `🩺 **खांसी और जुकाम (सटीक सलाह):**
+• **गरारे:** दिन में 3 बार गुनगुने नमक के पानी से गरारे करें।
+• **भाप:** दिन में 2 बार 5 मिनट सादे पानी की भाप लें।
+• **दवा:** सूखी खांसी में Ascoril D सिरप (10ml); कफ वाली खांसी में Ascoril LS (10ml)। रात में Cetirizine 10mg।
+• **घरेलू उपाय:** अदरक, तुलसी और 1 चम्मच शहद का सेवन करें।
+• **चेतावनी:** खांसी में खून आने या सांस फूलने पर तुरंत डॉक्टर को दिखाएं।`;
     }
-    return `🩺 **Clinical Assessment (Cough, Sore Throat & Airway Infection):**
-- **Non-Productive / Dry Cough:** Irritative laryngeal tickle caused by viral pharyngitis, allergic post-nasal drip, or asthma.
-- **Productive / Wet Cough:** Bronchial mucus hypersecretion and lower respiratory tract congestion.
-
-💡 **Targeted Pharmacotherapy & Relief Regimen:**
-1. **Warm Saline Gargles:** Gargle with isotonic warm saline water 3 times daily to reduce mucosal edema and destroy local pathogens.
-2. **Steam Inhalation:** 10 minutes twice daily loosens thick bronchial secretions.
-3. **Prescribed Formulation:**
-   - Dry Cough: Dextromethorphan HBr antitussive syrup (Ascoril D Plus, 10ml thrice daily).
-   - Productive Wet Cough: Mucolytic + Bronchodilator syrup (Ascoril LS 10ml thrice daily).
-   - Night Allergies & Rhinitis: Cetirizine 10mg tablet at bedtime.
-4. **Natural Soothers:** Ginger extract combined with organic honey coats the irritated vocal cords.
-
-⚠️ **Warning Signs:** Hemoptysis (blood in sputum), severe intercostal retractions, or cough persisting > 14 days mandates chest radiograph (X-ray) and pulmonology consultation.`;
+    return `🩺 **Cough & Cold Relief (Direct Advice):**
+• **Gargle:** Gargle with warm salt water 3 times daily to relieve throat soreness.
+• **Steam:** Inhale warm steam for 5–10 minutes twice daily.
+• **Medication:** Ascoril D (10ml) for dry cough; Ascoril LS (10ml) for chesty cough; Cetirizine 10mg at bedtime for runny nose.
+• **Home Care:** Drink warm water with honey and ginger.
+• **Warning:** See a doctor if cough lasts over 2 weeks or causes shortness of breath.`;
   }
 
   // =========================================================================
@@ -300,27 +264,19 @@ A sudden explosive "thunderclap" headache, accompanying nuchal rigidity (stiff n
     q.includes('pet me jalan')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (एसिडिटी, सीने में जलन और गैस):**
-पेट में हाइड्रोक्लोरिक एसिड (HCl) का अधिक बनना या भोजन नली के वाल्व का ढीला होना एसिड रिफ्लक्स (GERD) का कारण बनता है।
-
-💡 **सटीक उपचार और सावधानियां:**
-1. **प्राथमिक दवा:** पैंटोप्राजोल 40mg (Pantocid 40 / Pan 40) सुबह खाली पेट, नाश्ते से 30-45 मिनट पहले 1 गिलास पानी के साथ लें।
-2. **त्वरित राहत (Instant Relief):** सीने में तेज जलन होने पर डायजीन (Digene Gel) या जेलुसिल सिरप की 2 चम्मच (10ml) लें।
-3. **आहार:** अत्यधिक मिर्च-मसालेदार, तला-भुना खाना, खट्टे फल, चाय और कॉफी पूरी तरह बंद करें। ठंडा दूध पिएं।
-4. **सोने का नियम:** रात के खाने और सोने के बीच कम से कम 2 घंटे का अंतर रखें। तकिया थोड़ा ऊंचा रखें।
-
-⚠️ **चेतावनी:** यदि सीने की जलन बाएं हाथ, जबड़े या पीठ की ओर फैले या पसीना आए, तो इसे एसिडिटी न समझें, तुरंत ईसीजी (ECG) कराएं।`;
+      return `🩺 **एसिडिटी और सीने में जलन (सटीक सलाह):**
+• **दवा:** पैंटोप्राजोल 40mg (Pan 40) सुबह खाली पेट, नाश्ते से 30 मिनट पहले 1 गिलास पानी से लें।
+• **त्वरित राहत:** तेज जलन में डायजीन (Digene) या जेलुसिल सिरप की 2 चम्मच लें।
+• **आहार:** चाय, कॉफी, मिर्च-मसाले और तली चीजें बंद करें। ठंडा दूध पिएं।
+• **सोने का नियम:** रात के खाने के तुरंत बाद न लेटें। सिरहाने को थोड़ा ऊंचा रखें।
+• **चेतावनी:** यदि सीने का दर्द बाएं हाथ या जबड़े में फैले तो तुरंत ईसीजी (ECG) कराएं।`;
     }
-    return `🩺 **Clinical Assessment (Gastric Acidity, GERD & Acid Reflux):**
-Caused by excessive gastric hydrochloric acid secretion, delayed stomach emptying, or transient lower esophageal sphincter relaxation allowing acid wash into the esophagus.
-
-💡 **Targeted Pharmacological & Lifestyle Protocol:**
-1. **Primary Acid Suppressor:** Pantoprazole 40mg (Pantocid 40 / Pan 40) once daily in the morning, taken strictly 30 to 45 minutes before breakfast on an empty stomach.
-2. **Instant Symptom Neutralization:** Digene Gel or Gelusil liquid (10ml orally) provides immediate mucosal coating and neutralizes free acid within 5 minutes.
-3. **Dietary Elimination:** Strictly avoid deep-fried oils, red chili, carbonated sodas, citrus acids, and high-caffeine beverages. Drink chilled low-fat milk.
-4. **Circadian Posture:** Maintain at least a 2-hour buffer between dinner and recumbent sleep. Elevate the head of bed by 15-20 cm.
-
-⚠️ **Cardiac Alert Warning:** If burning sensation radiates to the left jaw, shoulder, or arm with cold sweating, immediately rule out acute coronary syndrome via urgent ECG.`;
+    return `🩺 **Acidity & Acid Reflux (Direct Advice):**
+• **Medication:** Pantoprazole 40mg (Pan 40) once daily in the morning, 30 mins before breakfast.
+• **Instant Relief:** Take 2 spoons of Digene or Gelusil antacid gel for fast cooling.
+• **Diet:** Avoid tea, coffee, deep-fried foods, and hot spices. Sip cold milk.
+• **Posture:** Do not lie down right after dinner; keep head slightly elevated.
+• **Warning:** If chest burning radiates to left arm or jaw with sweating, get an emergency ECG.`;
   }
 
   // =========================================================================
@@ -339,29 +295,19 @@ Caused by excessive gastric hydrochloric acid secretion, delayed stomach emptyin
     q.includes('food poisoning')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (पेट दर्द, दस्त और उल्टी):**
-दूषित भोजन या पानी से आंतों में बैक्टीरिया/वायरल संक्रमण (Gastroenteritis) होने से पेट में मरोड़, दस्त और उल्टी होती है।
-
-💡 **सटीक उपचार और जीवनरक्षक कदम:**
-1. **इलेक्ट्राल (ORS):** 1 लीटर उबले और ठंडे पानी में 1 पैकेट Electral ORS अच्छी तरह घोलें और दिनभर घूंट-घूंट कर पिएं। यह डिहाइड्रेशन से बचाता है।
-2. **उल्टी की दवा:** यदि लगातार उल्टी हो रही हो तो Ondansetron 4mg (Emeset 4) भोजन से पहले लें।
-3. **पेट मरोड़/दर्द की दवा:** पेट में ऐंठन और दर्द के लिए मेफ्टल स्पास (Meftal Spas - Dicyclomine + Mefenamic Acid) भोजन के बाद लें।
-4. **दस्त के लिए:** प्रोबायोटिक्स (जैसे Sporlac / Darolac) आंतों के अच्छे बैक्टीरिया को ठीक करते हैं।
-5. **आहार:** मूंग दाल की पतली खिचड़ी, छाछ, केला, और उबला आलू लें। दूध और घी का सेवन न करें।
-
-⚠️ **चेतावनी:** यदि मल में खून आए, पेशाब बहुत कम हो जाए या चक्कर आएं, तो तुरंत अस्पताल में ड्रिप (IV Fluids) लगवाएं।`;
+      return `🩺 **पेट दर्द, दस्त और उल्टी (सटीक सलाह):**
+• **ORS:** 1 लीटर पानी में 1 पैकेट इलेक्ट्राल ORS घोलकर दिनभर घूंट-घूंट पिएं।
+• **उल्टी की दवा:** Ondansetron 4mg (Emeset 4) खाने से 15 मिनट पहले लें।
+• **पेट दर्द:** ऐंठन में मेफ्टल स्पास (Meftal Spas) भोजन के बाद लें।
+• **आहार:** मूंग दाल खिचड़ी, केला और छाछ लें। दूध और तेल-घी बंद रखें।
+• **चेतावनी:** पेशाब बहुत कम होने या चक्कर आने पर तुरंत अस्पताल में ड्रिप लगवाएं।`;
     }
-    return `🩺 **Clinical Assessment (Acute Gastroenteritis, Diarrhea & Vomiting):**
-Enteric inflammation triggered by ingested bacterial toxins, viral rotavirus, or contaminated food leading to fluid hypersecretion and intestinal hypermotility.
-
-💡 **Targeted Clinical Protocol & Hydration Strategy:**
-1. **WHO-ORS Rehydration (Top Priority):** Dissolve 1 full sachet of Electral ORS in exactly 1 Liter of clean drinking water. Sip continuously throughout the day to replenish sodium, potassium, and chloride.
-2. **Antiemetic for Vomiting:** Ondansetron 4mg orally 15 minutes before oral intake to arrest nausea.
-3. **Antispasmodic for Cramping:** Meftal Spas (Dicyclomine 10mg + Mefenamic Acid 250mg) after meals for visceral colic.
-4. **Gut Flora Recovery:** Probiotic formulation (Sporlac / Enterogermina) twice daily restores microfloral barrier.
-5. **Dietary BRAT Regimen:** Consume bananas, white rice, applesauce, and dry toast. Completely omit dairy, butter, and raw vegetables.
-
-⚠️ **Critical Warning Signs:** Stool containing frank blood/mucus, severe skin turgor loss, oliguria (absence of urination > 8 hours), or hypotension requires immediate emergency IV fluid administration.`;
+    return `🩺 **Stomach Pain & Diarrhea Care (Direct Advice):**
+• **Rehydrate:** Dissolve 1 sachet Electral ORS in 1L clean water and sip throughout the day.
+• **For Vomiting:** Take Ondansetron 4mg orally 15 minutes before meals.
+• **For Cramps:** Take Meftal Spas after food for colic pain relief.
+• **Diet:** Eat soft khichdi, bananas, and curd. Avoid dairy milk and oily meals.
+• **Warning:** Visit an emergency clinic if dehydration causes extreme dizziness or dark/no urine.`;
   }
 
   // =========================================================================
@@ -379,35 +325,19 @@ Enteric inflammation triggered by ingested bacterial toxins, viral rotavirus, or
     q.includes('metformin')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (डायबिटीज / शुगर नियंत्रण):**
-रक्त में ग्लूकोज का स्तर सामान्य से अधिक होना अग्न्याशय (Pancreas) से इंसुलिन की कमी या इंसुलिन रेजिस्टेंस का परिणाम है।
-
-📊 **सामान्य ब्लड शुगर मानक (Clinical Reference):**
-• खाली पेट (Fasting): 70 - 99 mg/dL (सामान्य), 100-125 (प्री-डायबिटीज), 126+ (डायबिटीज)
-• खाने के 2 घंटे बाद (PP): 140 mg/dL से कम
-• 3 महीने की औसत शुगर (HbA1c): 5.7% से कम (सामान्य), 6.5%+ (डायबिटीज)
-
-💡 **सटीक प्रबंधन और दवाएं:**
-1. **दवा:** मेटफॉर्मिन 500mg (Glycomet) या ग्लाइमेपिराइड संयोजन डॉक्टर की सलाह के अनुसार हमेशा भोजन के साथ लें। कभी भोजन छोड़े बिना दवा न लें।
-2. **आहार:** सफेद चीनी, गुड़, मिठाई, मैदा और कोल्ड ड्रिंक पूरी तरह बंद करें। साबुत अनाज (जौ, चना, ओट्स), हरी पत्तेदार सब्जियां और मेथी दाना लें।
-3. **व्यायाम:** प्रतिदिन सुबह कम से कम 30-40 मिनट तेज चाल (Brisk Walk) चलें।
-
-⚠️ **लो शुगर (Hypoglycemia) चेतावनी:** यदि अचानक पसीना आए, हाथ कांपें या घबराहट हो, तो तुरंत 1 चम्मच चीनी, ग्लूकोज पाउडर या टॉफी खाएं।`;
+      return `🩺 **डायबिटीज और ब्लड शुगर (सटीक सलाह):**
+• **टारगेट:** खाली पेट 70-100 mg/dL, भोजन के 2 घंटे बाद 140 mg/dL से कम।
+• **दवा:** मेटफॉर्मिन (Glycomet) हमेशा भोजन के साथ लें। भोजन छोड़े बिना दवा न लें।
+• **आहार:** सफेद चीनी, मिठाई और कोल्ड ड्रिंक बंद करें। ओट्स, हरी सब्जियां और दालें खाएं।
+• **टहलना:** रोजाना 30 मिनट तेज चाल चलें।
+• **लो शुगर चेतावनी:** हाथ कांपने या पसीना आने पर तुरंत 1 चम्मच चीनी या टॉफी खाएं।`;
     }
-    return `🩺 **Clinical Assessment (Diabetes Mellitus & Glycemic Regulation):**
-Characterized by chronic hyperglycemia resulting from defective pancreatic insulin secretion, peripheral insulin resistance, or both.
-
-📊 **Diagnostic Clinical Glycemic Thresholds:**
-• Fasting Blood Sugar: 70 - 99 mg/dL (Optimal), 100 - 125 mg/dL (Impaired/Pre-diabetes), ≥ 126 mg/dL (Diabetic)
-• Post-Prandial (2hr): < 140 mg/dL (Optimal), ≥ 200 mg/dL (Diabetic)
-• Glycated Hemoglobin (HbA1c): < 5.7% (Normal), 5.7 - 6.4% (Pre-diabetic), ≥ 6.5% (Diabetic)
-
-💡 **Evidence-Based Medical Protocol:**
-1. **Oral Hypoglycemic Agents:** Metformin HCl 500mg/1000mg (Glycomet) taken with meals reduces hepatic glucose production and enhances peripheral sensitivity.
-2. **Nutritional Architecture:** Eliminate high glycemic index refined carbohydrates, table sugar, syrups, and ultra-processed bakery products. Prioritize dietary fiber (fenugreek, legumes, green vegetables).
-3. **Physical Activity:** 150 minutes per week of moderate-intensity aerobic exercise (brisk walking, cycling) dramatically increases skeletal muscle GLUT4 glucose uptake.
-
-⚠️ **Hypoglycemia Emergency Protocol:** If blood sugar drops < 70 mg/dL with profuse diaphoresis, tremors, or disorientation, administer the 15-15 rule immediately (consume 15g fast-acting sugar and recheck in 15 minutes).`;
+    return `🩺 **Diabetes & Blood Sugar (Direct Advice):**
+• **Target:** Fasting 70–100 mg/dL, post-meal < 140 mg/dL, HbA1c < 6.5%.
+• **Medication:** Take Metformin (Glycomet) strictly with meals as prescribed.
+• **Diet:** Eliminate white sugar, sweets, and sodas; eat fiber-rich oats, greens, and lentils.
+• **Activity:** Walk briskly for 30 minutes daily to lower blood sugar.
+• **Low Sugar Alert:** If trembling or sweating occurs, immediately consume 1 spoon sugar or candy.`;
   }
 
   // =========================================================================
@@ -424,37 +354,17 @@ Characterized by chronic hyperglycemia resulting from defective pancreatic insul
     q.includes('amlodipine')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (ब्लड प्रेशर / हाइपरटेंशन):**
-धमनियों की दीवारों पर रक्त का अत्यधिक दबाव हृदय और गुर्दों पर अतिरिक्त तनाव डालता है।
-
-📊 **ब्लड प्रेशर मानक (BP Range):**
-• सामान्य (Normal): 120/80 mmHg से कम
-• बढ़ा हुआ (Elevated): 120-129 / 80 mmHg
-• उच्च रक्तचाप (Hypertension Stage 1): 130-139 / 80-89 mmHg
-• गंभीर उच्च रक्तचाप (Stage 2): 140/90 mmHg या अधिक
-
-💡 **सटीक नियंत्रण और दवाएं:**
-1. **दवा:** टेल्मिसार्टन 40mg (Telma 40) या एम्लोडिपिन प्रतिदिन सुबह एक निश्चित समय पर लें। दवा कभी भी अचानक बंद न करें।
-2. **नमक नियंत्रण (DASH Diet):** दैनिक भोजन में नमक 1 छोटा चम्मच (5 ग्राम) से कम रखें। पापड़, अचार, नमकीन और पैकेटबंद चिप्स बंद करें।
-3. **तनाव प्रबंधन:** प्रतिदिन 15 मिनट प्राणायाम / अनुलोम-विलोम करें और 7-8 घंटे की गहरी नींद लें।
-
-⚠️ **इमर्जेंसी चेतावनी:** यदि बीपी 180/120 से ऊपर पहुंचे, सीने में भारीपन हो, सांस फूले या सिर के पीछे असहनीय दर्द हो, तो तुरंत अस्पताल की इमरजेंसी में जाएं।`;
+      return `🩺 **ब्लड प्रेशर (सटीक सलाह):**
+• **मानक:** सामान्य बीपी 120/80 mmHg। 140/90 से ऊपर हाई बीपी माना जाता है।
+• **दवा:** बीपी की दवा (जैसे Telma 40) प्रतिदिन निश्चित समय पर लें। अचानक बंद न करें।
+• **नमक:** भोजन में नमक आधा चम्मच रखें। पापड़, अचार और नमकीन बंद करें।
+• **चेतावनी:** बीपी 180/120 से ऊपर जाने या सीने में भारीपन होने पर तुरंत इमरजेंसी जाएं।`;
     }
-    return `🩺 **Clinical Assessment (Systemic Hypertension & BP Management):**
-Elevated arterial pressure exerts continuous hydrodynamic shear stress on coronary, cerebral, and renal vasculature.
-
-📊 **Clinical Blood Pressure Stratification (AHA/ACC):**
-• Optimal: Systolic < 120 mmHg and Diastolic < 80 mmHg
-• Elevated: Systolic 120-129 mmHg and Diastolic < 80 mmHg
-• Stage 1 Hypertension: 130-139 / 80-89 mmHg
-• Stage 2 Hypertension: ≥ 140 / ≥ 90 mmHg
-
-💡 **Clinical Management Strategy:**
-1. **Antihypertensive Pharmacotherapy:** Telmisartan 40mg (Telma 40, ARB) or Amlodipine 5mg (CCB) taken at the same hour each morning. Never abruptly discontinue antihypertensives.
-2. **Dietary Sodium Reduction (DASH Protocol):** Limit dietary sodium to < 2000mg/day (under 1 teaspoon salt). Strictly eliminate processed pickles, salted papads, and instant noodles.
-3. **Aerobic & Autonomic Health:** Perform 30 minutes daily brisk walking and 15 minutes of slow diaphragmatic breathing to enhance vagal tone.
-
-⚠️ **Hypertensive Crisis Warning:** BP exceeding 180/120 mmHg accompanied by chest tightness, epistaxis, acute dyspnea, or visual scotoma requires emergency intravenous titration.`;
+    return `🩺 **Blood Pressure Guidance (Direct Advice):**
+• **Normal Target:** 120/80 mmHg. High BP is 140/90 mmHg or above.
+• **Medication:** Take your prescribed BP pill (e.g. Telma 40) at the same time each morning.
+• **Diet:** Limit salt to less than 1 teaspoon daily; avoid pickles and fried snacks.
+• **Warning:** If BP exceeds 180/120 or you feel chest pressure, visit an emergency room immediately.`;
   }
 
   // =========================================================================
@@ -470,35 +380,17 @@ Elevated arterial pressure exerts continuous hydrodynamic shear stress on corona
     q.includes('atorvastatin')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (कोलेस्ट्रॉल और हृदय स्वास्थ्य):**
-रक्त में बैड कोलेस्ट्रॉल (LDL) और ट्राइग्लिसराइड्स का बढ़ना धमनियों में ब्लॉकेज (Atherosclerosis) का मुख्य कारण बनता है।
-
-📊 **लिपिड प्रोफाइल मानक:**
-• कुल कोलेस्ट्रॉल (Total): 200 mg/dL से कम (सामान्य)
-• एलडीएल (Bad LDL): 100 mg/dL से कम (सुरक्षित)
-• एचडीएल (Good HDL): 40 mg/dL से अधिक (हार्ट को सुरक्षित रखता है)
-• ट्राइग्लिसराइड्स (Triglycerides): 150 mg/dL से कम
-
-💡 **सटीक उपचार और सावधानियां:**
-1. **दवा:** उच्च स्तर पर डॉक्टर Atorvastatin 10mg / 20mg (Atorva) रात को भोजन के बाद निर्धारित करते हैं।
-2. **तेल का चयन:** डालडा, रिफाइंड पाम ऑयल और ट्रांस-फैट पूरी तरह बंद करें। सीमित मात्रा में सरसों का तेल या ऑलिव ऑयल प्रयोग करें।
-3. **ओमेगा-3 आहार:** रोजाना 4-5 भीगे बादाम, 2 अखरोट और 1 चम्मच अलसी (Flaxseeds) खाएं।
-4. **कार्डियो व्यायाम:** हफ्ते में 5 दिन कम से कम 30 मिनट तेज टहलें जिससे गुड एचडीएल कोलेस्ट्रॉल बढ़ता है।`;
+      return `🩺 **कोलेस्ट्रॉल और हृदय स्वास्थ्य (सटीक सलाह):**
+• **दवा:** डॉक्टर द्वारा बताई गई स्टैटिन (जैसे Atorvastatin 10/20mg) रात को भोजन के बाद लें।
+• **तेल का परहेज:** रिफाइंड पाम ऑयल, डालडा और तली चीजें पूरी तरह बंद करें।
+• **हेल्दी फैट्स:** रोजाना 4 भीगे बादाम, 2 अखरोट और 1 चम्मच अलसी लें।
+• **व्यायाम:** हफ्ते में 5 दिन कम से कम 30 मिनट तेज टहलें।`;
     }
-    return `🩺 **Clinical Assessment (Hyperlipidemia & Cardiovascular Risk):**
-Elevated low-density lipoprotein (LDL-C) and serum triglycerides lead to subendothelial lipid deposition, macrophage foam cell formation, and atheromatous plaque development.
-
-📊 **Optimal Serum Lipid Biomarkers:**
-• Total Cholesterol: < 200 mg/dL
-• Low-Density Lipoprotein (LDL-C): < 100 mg/dL (or < 70 mg/dL in high-risk patients)
-• High-Density Lipoprotein (HDL-C): > 40 mg/dL in men, > 50 mg/dL in women
-• Fasting Triglycerides: < 150 mg/dL
-
-💡 **Clinical Reversal Strategy:**
-1. **HMG-CoA Reductase Inhibitors (Statins):** Atorvastatin 10mg/20mg or Rosuvastatin taken at bedtime inhibits hepatic cholesterol synthesis and stabilizes plaques.
-2. **Lipid Nutritional Shifts:** Eliminate trans-fatty acids, deep-fried snacks, and commercial bakery hydrogenated shortening. Substitute with cold-pressed mustard oil or extra virgin olive oil.
-3. **Omega-3 Fatty Acids:** Incorporate 2 walnuts and 1 tablespoon of ground flaxseeds daily to lower triglyceride synthesis.
-4. **Physical Conditioning:** 150 minutes of weekly aerobic exercise directly raises protective HDL levels.`;
+    return `🩺 **Cholesterol & Heart Care (Direct Advice):**
+• **Medication:** Take prescribed statin (e.g. Atorvastatin 10/20mg) at night after dinner.
+• **Diet:** Completely cut out trans-fats, bakery goods, and deep-fried snacks.
+• **Healthy Foods:** Eat 4 soaked almonds, 2 walnuts, and 1 spoon flaxseeds daily.
+• **Exercise:** Walk briskly for 30 minutes 5 days a week to boost good HDL cholesterol.`;
   }
 
   // =========================================================================
@@ -516,23 +408,17 @@ Elevated low-density lipoprotein (LDL-C) and serum triglycerides lead to subendo
     q.includes('slip disc')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (जोड़ों और कमर का दर्द / गठिया):**
-कार्टिलेज का घिसना (ऑस्टियोआर्थराइटिस), यूरिक एसिड बढ़ना (गाउट) या रीढ़ की नस का दबना (साइटिका) असहनीय दर्द और सूजन पैदा करता है।
-
-💡 **सटीक उपचार और सावधानियां:**
-1. **दर्द निवारक दवा:** गंभीर दर्द के समय भोजन के बाद कोम्बिफ्लाम (Combiflam) या वोवेरान प्लस (Voveran - Diclofenac + Paracetamol) लें। साथ में एंटासिड (Pan 40) अवश्य लें।
-2. **हड्डी व नस पोषण:** Shelcal 500 (कैल्शियम + विटामिन D3) और न्यूरोबियन फोर्ट (विटामिन B12) 1 गोली रोज भोजन के बाद लें।
-3. **सिकाई:** जोड़ों की जकड़न के लिए गर्म पानी की थैली से सिकाई करें।
-4. **व्यायाम:** फिजियोथेरेपी और क्वाड्रीसेप्स स्ट्रेंथनिंग एक्सरसाइज करें। जमीन पर पालथी मारकर बैठने और भारी वजन उठाने से बचें।`;
+      return `🩺 **जोड़ों और कमर का दर्द (सटीक सलाह):**
+• **दर्द से राहत:** वोलिनी या मूव जेल हल्के हाथ से लगाएं। तेज मालिश न करें।
+• **दवा:** तेज दर्द में भोजन के बाद कॉम्बीफ्लेम या वोवेरान लें। साथ में एंटासिड लें।
+• **सप्लीमेंट:** Shelcal 500 (कैल्शियम + D3) और न्यूरोबियन फोर्ट 1 गोली रोज लें।
+• **सिकाई:** गर्म पानी की थैली से 15 मिनट सिकाई करें। भारी वजन उठाने से बचें।`;
     }
-    return `🩺 **Clinical Assessment (Joint Arthropathy, Sciatica & Lumbar Spasm):**
-Etiologies encompass articular cartilage degeneration (Osteoarthritis), hyperuricemia crystal deposition (Gout), or lumbar intervertebral disc herniation compressing L4-S1 nerve roots.
-
-💡 **Clinical Intervention Regimen:**
-1. **First-Line Analgesic Therapy:** NSAID formulation (Combiflam or Diclofenac 50mg + Paracetamol) taken strictly post-prandially along with gastroprotection (Pantoprazole).
-2. **Cartilage & Neuropathic Support:** Shelcal 500 (Calcium carbonate 500mg + Vitamin D3) combined with Methylcobalamin (Neurobion Forte) once daily.
-3. **Thermal Modality:** Apply warm hydrocollator packs for 15 minutes twice daily to relieve paraspinous and periarticular spasm.
-4. **Biomechanical Ergonomics:** Avoid prolonged floor sitting, cross-legged posture, and sudden unassisted lumbar flexion. Perform core-strengthening and hamstring stretches.`;
+    return `🩺 **Joint & Back Pain Relief (Direct Advice):**
+• **Topical Gel:** Apply Volini or Moov gel gently without vigorous rubbing.
+• **Medication:** Take Paracetamol 650mg or Combiflam after food for pain relief.
+• **Supplements:** Take Shelcal 500 (Calcium + D3) and Neurobion Forte daily.
+• **Care:** Apply warm water compress for 15 minutes. Avoid heavy lifting and floor sitting.`;
   }
 
   // =========================================================================
@@ -548,29 +434,15 @@ Etiologies encompass articular cartilage degeneration (Osteoarthritis), hyperuri
     q.includes('hb')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (एनीमिया / हीमोग्लोबिन की कमी):**
-रक्त में हीमोग्लोबिन कम होने से शरीर के अंगों तक ऑक्सीजन की आपूर्ति धीमी हो जाती है, जिससे थकान, सांस फूलना और सुस्ती महसूस होती है।
-
-📊 **सामान्य हीमोग्लोबिन मानक:**
-• पुरुष: 13.5 - 17.5 g/dL
-• महिलाएं: 12.0 - 15.5 g/dL
-
-💡 **सटीक उपचार और आहार:**
-1. **दवा:** आयरन और फोलिक एसिड सप्लीमेंट (जैसे Orofer XT / Autrin) दिन में 1 गोली भोजन के बाद या संतरे के जूस के साथ लें। आयरन के साथ चाय/दूध न पिएं क्योंकि इससे अवशोषण रुक जाता है।
-2. **आहार:** पालक, मेथी, चुकंदर (Beetroot), अनार, खजूर, गुड़ और चने का नियमित सेवन करें।
-3. **विटामिन सी:** नींबू पानी या आंवला लें, जो भोजन से आयरन सोखने में मदद करता है।`;
+      return `🩺 **खून की कमी और कमजोरी (सटीक सलाह):**
+• **दवा:** आयरन सप्लीमेंट (जैसे Orofer XT / Autrin) 1 गोली रोज दोपहर के भोजन के बाद लें।
+• **सावधानी:** आयरन के साथ चाय या दूध न पिएं। इसे नींबू पानी या संतरे के जूस के साथ लें।
+• **आहार:** पालक, मेथी, चुकंदर, अनार, खजूर, गुड़ और भुने चने खाएं।`;
     }
-    return `🩺 **Clinical Assessment (Iron Deficiency Anemia & Fatigue):**
-A decrease in total circulating hemoglobin impairs tissue oxygenation, resulting in lethargy, exertional dyspnea, pallor, and orthostatic dizziness.
-
-📊 **Normal Hemoglobin Parameters:**
-• Adult Males: 13.5 - 17.5 g/dL
-• Adult Females: 12.0 - 15.5 g/dL
-
-💡 **Targeted Therapeutic Protocol:**
-1. **Oral Iron Replenishment:** Ferrous Ascorbate + Folic Acid (Orofer XT tablet) once daily taken after meals with Vitamin C (lemon water or orange juice) to maximize intestinal absorption. Avoid taking iron simultaneously with tea, coffee, or milk.
-2. **Heme-Enhancing Nutrition:** Incorporate spinach, beetroot, pomegranate, dates, black raisins, and lentils into daily meals.
-3. **Follow-Up:** Repeat Complete Blood Count (CBC) in 60-90 days to verify marrow reticulocyte response.`;
+    return `🩺 **Anemia & Weakness Care (Direct Advice):**
+• **Medication:** Take 1 iron tablet (Orofer XT / Autrin) daily after lunch.
+• **Absorption Tip:** Take iron with lemon water or orange juice. Avoid tea, coffee, or milk with iron.
+• **Diet:** Eat spinach, beetroot, pomegranate, dates, lentils, and jaggery.`;
   }
 
   // =========================================================================
@@ -584,21 +456,15 @@ A decrease in total circulating hemoglobin impairs tissue oxygenation, resulting
     q.includes('hypothyroid')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (थायराइड / टीएसएच असंतुलन):**
-- **हाइपोथायराइडिज्म (Hypothyroidism - बढ़ा हुआ TSH):** वजन बढ़ना, सुस्ती, बालों का झड़ना, कब्ज और ठंड लगना।
-- **हाइपरथायराइडिज्म (Hyperthyroidism - घटा हुआ TSH):** वजन घटना, अत्यधिक पसीना, हाथ कांपना और धड़कन तेज होना।
-
-💡 **सटीक उपचार:**
-1. **दवा:** थायरोक्सिन सोडियम (Thyronorm / Eltroxin) सुबह बिस्तर से उठते ही खाली पेट 1 गिलास पानी के साथ लें। इसके बाद कम से कम 45 मिनट तक चाय, नाश्ता या दूध न लें।
-2. **जांच:** हर 3 महीने में खाली पेट T3, T4, TSH की रक्त जांच कराएं ताकि डॉक्टर सही खुराक तय कर सकें।`;
+      return `🩺 **थायराइड असंतुलन (सटीक सलाह):**
+• **दवा:** थायरोक्सिन (Thyronorm / Eltroxin) सुबह उठते ही खाली पेट 1 गिलास पानी से लें।
+• **नियम:** दवा लेने के बाद 45 मिनट तक चाय, दूध या नाश्ता न लें।
+• **जांच:** हर 3 महीने में खाली पेट TSH टेस्ट कराकर डॉक्टर से खुराक चेक कराएं।`;
     }
-    return `🩺 **Clinical Assessment (Thyroid Dysfunction & TSH Alterations):**
-- **Primary Hypothyroidism (Elevated TSH > 4.5 mIU/L):** Characterized by decreased metabolic rate, unexplained weight gain, periorbital edema, dry skin, and fatigue.
-- **Hyperthyroidism (Suppressed TSH < 0.4 mIU/L):** Characterized by autonomic hyperactivity, tachycardia, heat intolerance, and rapid weight loss.
-
-💡 **Pharmacological Management:**
-1. **Levothyroxine Therapy (Thyronorm / Eltroxin):** Must be ingested first thing in the morning strictly on an empty stomach with a full glass of water. Strictly fast from tea, milk, calcium, and food for at least 45 to 60 minutes afterward.
-2. **Biomarker Monitoring:** Recheck serum TSH every 8 to 12 weeks during dose titration.`;
+    return `🩺 **Thyroid Management (Direct Advice):**
+• **Medication:** Take Levothyroxine (Thyronorm) first thing in the morning with a full glass of water.
+• **Rule:** Wait 45 to 60 minutes before having tea, coffee, milk, or breakfast.
+• **Monitoring:** Check fasting TSH every 8 to 12 weeks to adjust dose.`;
   }
 
   // =========================================================================
@@ -613,23 +479,17 @@ A decrease in total circulating hemoglobin impairs tissue oxygenation, resulting
     q.includes('sgpt')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (पीलिया / जांडिस और लिवर संक्रमण):**
-रक्त में बिलीरुबिन (Bilirubin) का स्तर 2 mg/dL से अधिक होने पर आंखें और पेशाब पीले हो जाते हैं। यह वायरल हेपेटाइटिस या लिवर की सूजन का संकेत है।
-
-💡 **सटीक उपचार और सावधानियां:**
-1. **पूर्ण विश्राम (Bed Rest):** लिवर कोशिकाओं की मरम्मत के लिए कम से कम 10-14 दिन का पूरा आराम अनिवार्य है।
-2. **आहार:** तेल, घी, मसालेदार और तली चीजें पूरी तरह बंद करें। उबला हुआ भोजन, गन्ने का ताजा रस (साफ जगह का), नारियल पानी, ग्लूकोज और पपीता लें।
-3. **दवा:** लिवर टॉनिक (Liv 52 DS) 2 गोली दिन में दो बार भोजन के बाद लें।
-4. **जांच:** लिवर फंक्शन टेस्ट (LFT - Total Bilirubin, SGPT, SGOT) तुरंत कराएं।`;
+      return `🩺 **पीलिया और लिवर स्वास्थ्य (सटीक सलाह):**
+• **पूर्ण आराम:** 10-14 दिन का पूरा बेड रेस्ट लें। भारी काम न करें।
+• **आहार:** तेल, घी और मसाले बंद करें। उबला खाना, गन्ने का ताजा रस, नारियल पानी और पपीता लें।
+• **दवा:** लिव 52 डीएस (Liv 52 DS) 2 गोली दिन में दो बार भोजन के बाद लें।
+• **जांच:** तुरंत एलएफटी (LFT) और बिलीरुबिन टेस्ट कराएं।`;
     }
-    return `🩺 **Clinical Assessment (Jaundice & Hepatic Inflammation):**
-Clinical icterus (yellowing of sclera and skin) manifests when serum total bilirubin exceeds 2.5 mg/dL due to viral hepatitis, cholestasis, or hemolysis.
-
-💡 **Clinical Management Regimen:**
-1. **Strict Bed Rest:** Essential during the acute viremic phase to optimize hepatic sinusoidal blood flow.
-2. **Dietary Protocol:** Zero-fat diet. Completely avoid saturated oils, spices, and non-vegetarian foods. Consume high-carbohydrate liquids (tender coconut water, fresh cane juice from hygienic sources, glucose, and ripe papaya).
-3. **Hepatic Support:** Liv-52 DS or Ursodeoxycholic acid under physician direction.
-4. **Laboratory Diagnostics:** Obtain Liver Function Test (LFT) with SGPT/ALT, SGOT/AST, Alkaline Phosphatase, and Viral Hepatitis Serology (HBsAg, Anti-HCV, IgM Anti-HAV).`;
+    return `🩺 **Jaundice & Liver Care (Direct Advice):**
+• **Rest:** Take complete bed rest for 10–14 days to let liver cells recover.
+• **Diet:** Zero-oil diet. Drink coconut water, clean sugarcane juice, and eat ripe papaya.
+• **Support:** Take Liv-52 DS (2 tablets twice daily) after meals.
+• **Testing:** Get a Liver Function Test (LFT) and ultrasound done promptly.`;
   }
 
   // =========================================================================
@@ -646,23 +506,17 @@ Clinical icterus (yellowing of sclera and skin) manifests when serum total bilir
     q.includes('पेशाब में जलन')
   ) {
     if (isHi) {
-      return `🩺 **क्लिनिकल विश्लेषण (यूटीआई / पेशाब में जलन और गुर्दे की पथरी):**
-बैक्टीरिया द्वारा मूत्राशय में संक्रमण या कैल्शियम ऑक्सालेट की पथरी के कारण पेशाब में तीव्र जलन, बार-बार पेशाब आना और कमर के पिछले हिस्से में दर्द होता है।
-
-💡 **सटीक उपचार:**
-1. **हाइड्रेशन:** दिन में कम से कम 3.5 से 4 लीटर पानी पिएं ताकि बैक्टीरिया और छोटे स्टोन पेशाब के जरिए बाहर निकल जाएं।
-2. **यूरिन अल्कलाइजर:** Cital Syrup (Disodium Hydrogen Citrate) 2 चम्मच 1 गिलास पानी में मिलाकर दिन में 3 बार पिएं। यह पेशाब का एसिडिक स्तर कम कर तुरंत जलन शांत करता है।
-3. **दवा:** जीवाणु संक्रमण के लिए डॉक्टर Cefixime 200mg या Nitrofurantoin 100mg निर्धारित करते हैं।
-4. **जांच:** यूरिन रूटीन एंड माइक्रोस्कोपी (Urine R/M) और पेट का अल्ट्रासाउंड (USG KUB) कराएं।`;
+      return `🩺 **पेशाब में जलन और यूटीआई (सटीक सलाह):**
+• **पानी:** दिन में कम से कम 3.5 से 4 लीटर पानी पिएं ताकि बैक्टीरिया धुल जाएं।
+• **जलन में राहत:** Cital Syrup 2 चम्मच 1 गिलास पानी में मिलाकर दिन में 3 बार पिएं।
+• **दवा:** संक्रमण के लिए डॉक्टर Cefixime 200mg या Nitrofurantoin निर्धारित करते हैं।
+• **जांच:** यूरिन रूटीन (Urine R/M) टेस्ट कराएं।`;
     }
-    return `🩺 **Clinical Assessment (Urinary Tract Infection & Nephrolithiasis):**
-Acute bacterial cystitis (predominantly E. coli) or renal calculi (calcium oxalate stones) irritating urothelial linings, provoking severe dysuria, frequency, and flank colic.
-
-💡 **Targeted Therapeutic Management:**
-1. **Aggressive Hydration:** Consume 3.5 to 4 Liters of clean fluids daily to induce continuous urinary tract flushing.
-2. **Urinary Alkalinizer:** Disodium Hydrogen Citrate (Cital liquid, 10ml diluted in 200ml water thrice daily) neutralizes acidic urine to immediately soothe dysuria.
-3. **Antimicrobial Formulation:** Targeted cephalosporin (Cefixime 200mg twice daily) or Nitrofurantoin 100mg under culture guidance.
-4. **Diagnostics:** Perform Urine Routine & Microscopy (pus cells, RBCs) and Ultrasound KUB (Kidney, Ureter, Bladder).`;
+    return `🩺 **UTI & Burning Urination (Direct Advice):**
+• **Hydration:** Drink 3.5 to 4 liters of clean water daily to flush the urinary tract.
+• **Rapid Relief:** Mix 2 spoons of Cital syrup in a glass of water and drink 3 times daily.
+• **Medication:** Take prescribed antibiotic (like Cefixime 200mg) for bacterial infection.
+• **Diagnostics:** Get a Urine Routine & Microscopy test done.`;
   }
 
   // =========================================================================
@@ -912,7 +766,7 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
                 </h3>
                 <p className="text-[10px] text-blue-100 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-                  ChatGPT & Gemini Backend Active
+                  ChatGPT Backend Attached (GPT-4o-mini)
                 </p>
               </div>
             </div>
@@ -964,9 +818,9 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
                   </label>
                   <div className="grid grid-cols-3 gap-1">
                     {[
-                      { id: 'auto', label: '⚡ Auto' },
-                      { id: 'chatgpt', label: '🤖 ChatGPT' },
+                      { id: 'chatgpt', label: '🤖 ChatGPT (Direct)' },
                       { id: 'gemini', label: '✨ Gemini' },
+                      { id: 'auto', label: '⚡ Auto' },
                     ].map((p) => (
                       <button
                         key={p.id}
@@ -988,7 +842,7 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
 
                 <div>
                   <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">
-                    OpenAI ChatGPT Key (Optional):
+                    OpenAI ChatGPT API Key (Direct Connection):
                   </label>
                   <input
                     type="password"
@@ -996,9 +850,12 @@ export const FloatingCopilot: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
                     onChange={(e) =>
                       setLocalAiConfig({ ...aiConfig, openaiApiKey: e.target.value })
                     }
-                    placeholder="sk-proj-... (Optional personal key)"
+                    placeholder="sk-proj-... (Paste OpenAI key or leave for backend env)"
                     className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-[11px] text-slate-900 dark:text-slate-100"
                   />
+                  <p className="text-[9px] text-slate-500 mt-0.5">
+                    Queries OpenAI ChatGPT (GPT-4o-mini) directly from backend.
+                  </p>
                 </div>
 
                 <div>

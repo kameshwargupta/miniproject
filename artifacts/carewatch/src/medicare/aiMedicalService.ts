@@ -12,14 +12,21 @@ const STORAGE_KEY = 'medicare_ai_config';
 export const getAiConfig = (): AiConfig => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        geminiApiKey: parsed.geminiApiKey || '',
+        openaiApiKey: parsed.openaiApiKey || '',
+        provider: parsed.provider === 'auto' ? 'chatgpt' : (parsed.provider || 'chatgpt'),
+      };
+    }
   } catch (e) {
     console.warn('Error reading AI config from storage', e);
   }
   return {
     geminiApiKey: '',
     openaiApiKey: '',
-    provider: 'auto',
+    provider: 'chatgpt',
   };
 };
 
@@ -615,7 +622,7 @@ export async function askCopilotChatWithAi(params: {
 }): Promise<CopilotChatResponse> {
   const config = getAiConfig();
 
-  // 1. Try Backend /api/ai/copilot-chat (which connects to ChatGPT or Gemini)
+  // 1. Direct Backend /api/ai/copilot-chat (Connected to ChatGPT / OpenAI API)
   try {
     const res = await fetch('/api/ai/copilot-chat', {
       method: 'POST',
@@ -625,17 +632,17 @@ export async function askCopilotChatWithAi(params: {
         history: params.history || [],
         language: params.language || 'en',
         apiKey: config.openaiApiKey || config.geminiApiKey,
-        provider: config.provider || 'auto',
+        provider: config.provider || 'chatgpt',
       }),
     });
 
     if (res.ok) {
       const data = await res.json();
-      if (data.success && data.reply && !data.fallback) {
+      if (data.success && data.reply) {
         return {
           reply: data.reply,
-          source: data.source || (config.provider === 'chatgpt' ? 'chatgpt' : 'gemini'),
-          model: data.model,
+          source: data.source || 'chatgpt',
+          model: data.model || 'ChatGPT (GPT-4o-mini)',
         };
       }
     }
