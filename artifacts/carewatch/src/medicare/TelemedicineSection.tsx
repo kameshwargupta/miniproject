@@ -99,7 +99,19 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
   const [bookedSlot, setBookedSlot] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const peerInstanceRef = useRef<any>(null);
+  const activeCallRef = useRef<any>(null);
+
+  // WebRTC / PeerJS State
+  const [myPeerId, setMyPeerId] = useState<string>('');
+  const [roomId, setRoomId] = useState<string>('');
+  const [joinRoomInput, setJoinRoomInput] = useState<string>('');
+  const [isCallConnected, setIsCallConnected] = useState(false);
+  const [isPeerReady, setIsPeerReady] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [showJoinForm, setShowJoinForm] = useState(false);
 
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
@@ -134,6 +146,27 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
       // Audio not supported
     }
   };
+
+
+  // Load PeerJS CDN script once on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !(window as any).Peer) {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
+      script.async = true;
+      script.onload = () => setIsPeerReady(true);
+      document.body.appendChild(script);
+    } else if ((window as any).Peer) {
+      setIsPeerReady(true);
+    }
+    return () => {
+      // Cleanup peer on unmount
+      if (peerInstanceRef.current) {
+        try { peerInstanceRef.current.destroy(); } catch {}
+        peerInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   // Manage Live Webcam & Audio Stream
   useEffect(() => {
@@ -275,20 +308,184 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
     }
   };
 
+  // Initialize PeerJS and get media when call starts
+  const initPeerAndMedia = async (doc: Doctor) => {
+    // Get user media first
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch {
+        setHasWebcam(false);
+      }
+    }
+
+    if (stream) {
+      mediaStreamRef.current = stream;
+      setHasWebcam(true);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+    }
+
+    // Initialize PeerJS
+    const PeerClass = (window as any).Peer;
+    if (!PeerClass) return;
+
+    // Destroy old peer if any
+    if (peerInstanceRef.current) {
+      try { peerInstanceRef.current.destroy(); } catch {}
+    }
+
+    const peer = new PeerClass(undefined, {
+      host: '0.peerjs.com',
+      port: 443,
+      secure: true,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' },
+        ]
+      }
+    });
+
+    peerInstanceRef.current = peer;
+
+    peer.on('open', (id: string) => {
+      setMyPeerId(id);
+      setRoomId(id);
+      setIsCallConnecting(false);
+    });
+
+    peer.on('error', (err: any) => {
+      console.error('PeerJS error:', err);
+      setIsCallConnecting(false);
+    });
+
+    // Listen for incoming calls (doctor joining as caller)
+    peer.on('call', (call: any) => {
+      activeCallRef.current = call;
+      const localStream = mediaStreamRef.current;
+      call.answer(localStream || undefined);
+      call.on('stream', (remoteStream: MediaStream) => {
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+        }
+        setIsCallConnected(true);
+        setIsCallConnecting(false);
+      });
+      call.on('close', () => {
+        setIsCallConnected(false);
+      });
+    });
+  };
+
   const handleStartCall = (doc: Doctor) => {
     setActiveCallDoc(doc);
     setIsVideoOn(true);
     setIsMicOn(true);
     setIsScreenSharing(false);
+    setIsCallConnected(false);
+    setRoomId('');
+    setMyPeerId('');
+    setShowJoinForm(false);
+    setJoinRoomInput('');
+    setTimeout(() => {
+      initPeerAndMedia(doc);
+    }, 400);
+  };
+
+  // Doctor / second person joins by entering room ID
+  const handleJoinAsDoctor = async () => {
+    const targetRoomId = joinRoomInput.trim();
+    if (!targetRoomId) return;
+
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch {}
+    }
+
+    if (stream) {
+      mediaStreamRef.current = stream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+    }
+
+    const PeerClass = (window as any).Peer;
+    if (!PeerClass) return;
+
+    if (peerInstanceRef.current) {
+      try { peerInstanceRef.current.destroy(); } catch {}
+    }
+
+    const peer = new PeerClass(undefined, {
+      host: '0.peerjs.com',
+      port: 443,
+      secure: true,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+        ]
+      }
+    });
+
+    peerInstanceRef.current = peer;
+    setIsCallConnecting(true);
+
+    peer.on('open', () => {
+      const call = peer.call(targetRoomId, stream || new MediaStream());
+      activeCallRef.current = call;
+
+      call.on('stream', (remoteStream: MediaStream) => {
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+        setIsCallConnected(true);
+        setIsCallConnecting(false);
+      });
+
+      call.on('close', () => setIsCallConnected(false));
+      call.on('error', () => setIsCallConnecting(false));
+    });
+
+    peer.on('error', () => setIsCallConnecting(false));
+  };
+
+  const handleCopyRoomId = () => {
+    navigator.clipboard.writeText(roomId).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    });
   };
 
   const handleEndCall = () => {
     stop();
     playChime('end');
+    // Stop all media tracks
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
     }
+    // Close active WebRTC call
+    if (activeCallRef.current) {
+      try { activeCallRef.current.close(); } catch {}
+      activeCallRef.current = null;
+    }
+    // Destroy PeerJS instance
+    if (peerInstanceRef.current) {
+      try { peerInstanceRef.current.destroy(); } catch {}
+      peerInstanceRef.current = null;
+    }
+    // Clear remote video
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    setIsCallConnected(false);
+    setRoomId('');
+    setMyPeerId('');
     if (activeCallDoc) {
       setCompletedDoc(activeCallDoc);
       setShowPrescriptionModal(true);
@@ -674,232 +871,280 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
       </div>
 
       {/* ========================================================================= */}
-      {/* LIVE VIDEO CONSULTATION ROOM MODAL (WebRTC LIVE STREAM + HD DOCTOR FEED) */}
-      {/* ========================================================================= */}
+      {/* ============================================================= */}
+      {/* WHATSAPP-STYLE REAL WEBRTC VIDEO CONSULTATION MODAL          */}
+      {/* ============================================================= */}
       {activeCallDoc && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-          <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-5xl h-[680px] max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative">
-            {/* Modal Header */}
-            <div className="px-5 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-white">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
-                <div>
-                  <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
-                    {activeCallDoc.name}
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    {activeCallDoc.specialty} • {activeCallDoc.hospital}
-                  </p>
+        <div className="fixed inset-0 z-50 bg-black flex flex-col animate-in fade-in">
+          {/* ── CALLING SCREEN (connecting / waiting for room ID) ── */}
+          {(isCallConnecting || (!isCallConnected && !roomId)) && (
+            <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 to-black text-white space-y-6 px-6 pb-12">
+              {/* Pulsing rings */}
+              <div className="relative flex items-center justify-center">
+                <div className="absolute w-52 h-52 rounded-full border border-indigo-500/20 animate-ping" style={{ animationDuration: '2s' }} />
+                <div className="absolute w-40 h-40 rounded-full border border-indigo-500/30 animate-ping" style={{ animationDuration: '1.5s' }} />
+                <div className="absolute w-32 h-32 rounded-full border-2 border-indigo-500/50 animate-ping" style={{ animationDuration: '1s' }} />
+                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-purple-600 to-blue-500 flex items-center justify-center text-white text-3xl font-black shadow-2xl">
+                  {activeCallDoc.name.replace('Dr. ', '').slice(0, 2)}
+                </div>
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-2xl font-bold">{activeCallDoc.name}</h3>
+                <p className="text-slate-400 text-sm">{activeCallDoc.specialty}</p>
+                <p className="text-indigo-300 text-sm font-medium animate-pulse">
+                  {isCallConnecting ? 'Initializing secure session...' : 'Setting up your room...'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleEndCall}
+                className="mt-8 w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center shadow-xl cursor-pointer transition active:scale-90"
+              >
+                <PhoneOff className="w-7 h-7 text-white" />
+              </button>
+              <span className="text-xs text-slate-500">Cancel</span>
+            </div>
+          )}
+
+          {/* ── ROOM READY: Share Room ID + Join Form ── */}
+          {!isCallConnecting && roomId && !isCallConnected && (
+            <div className="flex-1 flex flex-col bg-slate-950 text-white">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 bg-slate-900 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                  <div>
+                    <p className="font-bold text-sm">{activeCallDoc.name}</p>
+                    <p className="text-[11px] text-slate-400">{activeCallDoc.specialty} • Waiting for doctor to join...</p>
+                  </div>
+                </div>
+                <span className="font-mono text-xs bg-slate-800 px-3 py-1 rounded-md text-emerald-400 border border-slate-700">
+                  {formatTimer(callDuration)}
+                </span>
+              </div>
+
+              <div className="flex flex-1 overflow-hidden">
+                {/* Left: Video + Room ID Panel */}
+                <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-6">
+                  {/* Local video preview */}
+                  <div className="w-full max-w-sm aspect-video bg-slate-900 rounded-2xl overflow-hidden border-2 border-indigo-500/40 shadow-xl relative">
+                    {isVideoOn && hasWebcam ? (
+                      <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center space-y-2">
+                          <div className="w-16 h-16 rounded-full bg-indigo-600/30 flex items-center justify-center mx-auto text-indigo-300 text-2xl font-black">
+                            You
+                          </div>
+                          <p className="text-slate-400 text-xs">Camera Preview</p>
+                        </div>
+                      </div>
+                    )}
+                    <span className="absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[10px] text-white font-bold">You (Patient)</span>
+                  </div>
+
+                  {/* Room ID Share Box */}
+                  <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4">
+                    <div className="text-center">
+                      <ShieldCheck className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
+                      <p className="text-sm font-bold text-white">Share Room ID with Doctor</p>
+                      <p className="text-xs text-slate-400 mt-1">Doctor enters this ID to join your call</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-800 border border-slate-600 rounded-xl px-3 py-2.5">
+                      <code className="flex-1 text-xs font-mono text-emerald-300 break-all">{roomId}</code>
+                      <button
+                        type="button"
+                        onClick={handleCopyRoomId}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition shrink-0"
+                      >
+                        {copySuccess ? '✓ Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Join as Doctor (other device) */}
+                  <div className="w-full max-w-sm">
+                    <button
+                      type="button"
+                      onClick={() => setShowJoinForm(!showJoinForm)}
+                      className="w-full text-xs text-indigo-400 hover:text-indigo-300 font-semibold text-center cursor-pointer py-1"
+                    >
+                      {showJoinForm ? '▲ Hide Doctor Join Form' : '▼ Join as Doctor (Enter Room ID)'}
+                    </button>
+                    {showJoinForm && (
+                      <div className="mt-3 bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-3">
+                        <p className="text-xs text-slate-400 font-medium">Enter patient's Room ID to connect:</p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={joinRoomInput}
+                            onChange={(e) => setJoinRoomInput(e.target.value)}
+                            placeholder="Paste Room ID here..."
+                            className="flex-1 bg-slate-800 border border-slate-600 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleJoinAsDoctor}
+                            disabled={!joinRoomInput.trim()}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg cursor-pointer transition"
+                          >
+                            Join
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Chat Panel */}
+                <div className="w-80 bg-slate-900 border-l border-slate-800 flex flex-col">
+                  <div className="px-4 py-3 border-b border-slate-800 text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-indigo-400" />
+                    <span>Live Chat & Symptoms</span>
+                  </div>
+                  <div className="flex-1 p-3 overflow-y-auto space-y-3 text-xs">
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className={`flex flex-col ${msg.sender === 'patient' ? 'items-end' : 'items-start'}`}>
+                        <div className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${msg.sender === 'patient' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-bl-none'}`}>
+                          <p>{msg.text}</p>
+                        </div>
+                        <span className="text-[9px] text-slate-500 mt-0.5 px-1">{msg.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-2.5 border-t border-slate-800 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                      placeholder="Describe symptoms..."
+                      className="flex-1 bg-slate-800 text-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <button type="button" onClick={() => handleSendChat()} className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl cursor-pointer">
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Call Status & Live Prescriptions Counter */}
-              <div className="flex items-center gap-3">
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 text-[11px] font-semibold">
-                  <Pill className="w-3 h-3 text-emerald-400" />
-                  <span>Prescribed: {prescribedList.length} Meds</span>
-                </span>
-                <span className="font-mono text-xs bg-slate-800 px-3 py-1 rounded-md text-emerald-400 font-bold border border-slate-700">
-                  {formatTimer(callDuration)}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleEndCall}
-                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
-                  title="Close Consultation"
-                >
-                  <X className="w-5 h-5" />
+              {/* Bottom Toolbar */}
+              <div className="px-6 py-4 bg-slate-900 border-t border-slate-800 flex items-center justify-center gap-4">
+                <button type="button" onClick={handleToggleMic} className={`p-3.5 rounded-full cursor-pointer transition ${isMicOn ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-red-600 text-white'}`} title={isMicOn ? 'Mute' : 'Unmute'}>
+                  {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                </button>
+                <button type="button" onClick={handleToggleVideo} className={`p-3.5 rounded-full cursor-pointer transition ${isVideoOn ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-red-600 text-white'}`} title={isVideoOn ? 'Camera Off' : 'Camera On'}>
+                  {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                </button>
+                <button type="button" onClick={handleEndCall} className="px-6 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-sm flex items-center gap-2 cursor-pointer shadow-lg transition active:scale-95">
+                  <PhoneOff className="w-5 h-5" />
+                  <span>End Call</span>
                 </button>
               </div>
             </div>
+          )}
 
-            {/* Connecting State Banner */}
-            {isCallConnecting && (
-              <div className="absolute inset-0 z-20 bg-slate-950/95 flex flex-col items-center justify-center gap-4 text-white p-6">
-                <div className="relative">
-                  <div className="w-20 h-20 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center font-bold text-indigo-400">
-                    {activeCallDoc.name.replace('Dr. ', '').slice(0, 2)}
+          {/* ── CONNECTED: WhatsApp-style Full-Screen Video Call ── */}
+          {isCallConnected && (
+            <div className="flex-1 flex overflow-hidden relative bg-black">
+              {/* Remote Video (Full screen) */}
+              <div className="flex-1 relative">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                {/* Overlay when no remote video yet */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center text-white opacity-40">
+                    <div className="w-24 h-24 rounded-full bg-indigo-600/30 flex items-center justify-center mx-auto text-4xl font-black mb-2">
+                      {activeCallDoc.name.replace('Dr. ', '').slice(0, 2)}
+                    </div>
+                    <p className="text-sm font-medium">{activeCallDoc.name}</p>
                   </div>
                 </div>
-                <div className="text-center">
-                  <h4 className="text-base font-bold">Connecting Secure WebRTC Session...</h4>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Establishing peer-to-peer encrypted video channel with {activeCallDoc.name}
-                  </p>
+
+                {/* Top bar */}
+                <div className="absolute top-0 left-0 right-0 px-5 py-4 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent">
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <div>
+                      <p className="font-bold text-sm">{activeCallDoc.name}</p>
+                      <p className="text-[11px] text-emerald-300">🔒 End-to-end encrypted</p>
+                    </div>
+                  </div>
+                  <span className="font-mono text-sm text-white bg-black/50 px-3 py-1 rounded-lg font-bold">
+                    {formatTimer(callDuration)}
+                  </span>
                 </div>
-              </div>
-            )}
 
-            {/* Main Stage: Video + Chat Layout */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 overflow-hidden">
-              {/* Doctor Video Area (2/3 Grid) */}
-              <div className="md:col-span-2 bg-slate-950 relative flex items-center justify-center p-3 sm:p-4 overflow-hidden">
-                <div className="w-full h-full rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950/40 flex flex-col items-center justify-center relative overflow-hidden border border-slate-800 shadow-inner">
-                  {/* Doctor Consultation Avatar */}
-                  <div className="relative flex flex-col items-center">
-                    <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-tr from-indigo-600 via-purple-600 to-blue-500 p-1 shadow-xl">
-                      <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-indigo-300 text-3xl sm:text-4xl font-black">
-                        {activeCallDoc.name.replace('Dr. ', '').slice(0, 2)}
+                {/* PIP Local Video (bottom-right) */}
+                <div className="absolute bottom-24 right-4 w-36 h-28 rounded-xl overflow-hidden border-2 border-white/30 shadow-2xl bg-slate-900">
+                  {isVideoOn && hasWebcam ? (
+                    <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                      <div className="text-center">
+                        <VideoOff className="w-5 h-5 text-red-400 mx-auto" />
+                        <p className="text-[9px] text-slate-400 mt-1">Camera Off</p>
                       </div>
                     </div>
-
-                    <span className="text-white font-bold text-lg mt-3 flex items-center gap-1.5">
-                      {activeCallDoc.name}
-                      <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    </span>
-                    <span className="text-xs text-indigo-300 font-medium">
-                      {activeCallDoc.qualification} • {activeCallDoc.specialty}
-                    </span>
-
-                    {/* Animated Doctor Audio Equalizer */}
-                    <div className="flex items-center gap-1.5 mt-3 h-6">
-                      {[12, 24, 16, 28, 14].map((h, i) => (
-                        <div
-                          key={i}
-                          className={`w-1 rounded-full bg-emerald-400 transition-all duration-300 ${
-                            isDoctorSpeaking ? 'opacity-100' : 'opacity-30'
-                          }`}
-                          style={{
-                            height: isDoctorSpeaking ? `${h}px` : '4px',
-                            animation: isDoctorSpeaking ? `bounce 1s infinite ${i * 0.15}s` : 'none',
-                          }}
-                        />
-                      ))}
-                      <span className="text-[11px] text-emerald-400 font-semibold ml-2">
-                        {isDoctorSpeaking ? 'Doctor Speaking...' : 'Listening to you...'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Doctor Dynamic Subtitles / Speech Bubble */}
-                  <div className="absolute bottom-4 left-4 right-36 sm:right-44">
-                    <div className="bg-black/70 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 text-white text-xs shadow-lg animate-in fade-in">
-                      <p className="text-slate-200 italic line-clamp-2">{doctorSubtitles}</p>
-                    </div>
-                  </div>
-
-                  {/* PATIENT SELF-VIEW PICTURE-IN-PICTURE */}
-                  <div className="absolute bottom-4 right-4 w-32 h-24 sm:w-40 sm:h-28 bg-slate-900 rounded-xl border-2 border-indigo-500/60 shadow-2xl overflow-hidden flex flex-col items-center justify-center">
-                    {isVideoOn ? (
-                      hasWebcam ? (
-                        <video
-                          ref={localVideoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-center p-2 relative">
-                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                            You
-                          </div>
-                          <span className="text-[9px] text-emerald-400 font-semibold mt-1">
-                            Camera Active (HD)
-                          </span>
-                          <div className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-                        </div>
-                      )
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-slate-400 p-2">
-                        <VideoOff className="w-5 h-5 text-red-400" />
-                        <span className="text-[9px] text-red-400 font-semibold mt-1">Camera Off</span>
-                      </div>
-                    )}
-
-                    <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[8px] font-bold text-white flex items-center gap-1">
-                      <span>You</span>
-                      {!isMicOn && <MicOff className="w-2.5 h-2.5 text-red-400" />}
-                    </div>
-                  </div>
+                  )}
+                  <span className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[8px] text-white font-bold flex items-center gap-1">
+                    You {!isMicOn && <MicOff className="w-2.5 h-2.5 text-red-400" />}
+                  </span>
                 </div>
               </div>
 
-              {/* In-Call Live Chat Drawer (1/3 Grid) with PRESCRIPTION GENERATION */}
-              <div
-                className={`bg-slate-900 border-l border-slate-800 flex flex-col h-full ${
-                  isChatOpen ? 'flex' : 'hidden md:flex'
-                }`}
-              >
+              {/* Right Chat Panel (collapsible on mobile) */}
+              <div className={`w-80 bg-slate-950/95 backdrop-blur border-l border-slate-800 flex flex-col ${isChatOpen ? 'flex' : 'hidden md:flex'}`}>
                 <div className="px-4 py-3 border-b border-slate-800 text-xs font-bold text-slate-300 flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <MessageSquare className="w-4 h-4 text-indigo-400" />
-                    <span>{t.patientSymptomChat || 'Live Prescription & Symptoms Chat'}</span>
+                    <span>{t.patientSymptomChat || 'Live Prescription & Chat'}</span>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
-                    Online
-                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">Connected</span>
                 </div>
 
                 {/* Quick Symptom Chips */}
                 <div className="p-2 border-b border-slate-800 bg-slate-950/40">
-                  <span className="text-[10px] text-slate-400 font-bold block mb-1">{lang === 'hi' ? 'समस्या लिखें या क्लिक करें:' : 'Type or Click Problem:'}</span>
+                  <span className="text-[10px] text-slate-400 font-bold block mb-1">{lang === 'hi' ? 'समस्या बताएं:' : 'Quick Symptoms:'}</span>
                   <div className="flex flex-wrap gap-1">
                     {[
-                      lang === 'hi' ? '🌡️ तेज बुखार और कंपकंपी' : '🌡️ High Fever & Chills',
-                      lang === 'hi' ? '🤕 गंभीर सिरदर्द' : '🤕 Severe Headache',
-                      lang === 'hi' ? '🔥 पेट में गैस और जलन' : '🔥 Stomach Acidity & Gas',
-                      lang === 'hi' ? '🤮 दस्त और उल्टी' : '🤮 Loose Motion & Vomiting',
-                      lang === 'hi' ? '😮‍💨 खांसी और गले में खराश' : '😮‍💨 Cough & Sore Throat',
-                      lang === 'hi' ? '💊 दवा प्रिस्क्रिप्शन चाहिए' : '💊 Request Prescription',
+                      lang === 'hi' ? '🌡️ तेज बुखार' : '🌡️ High Fever',
+                      lang === 'hi' ? '🤕 सिरदर्द' : '🤕 Headache',
+                      lang === 'hi' ? '🔥 एसिडिटी' : '🔥 Acidity',
+                      lang === 'hi' ? '🤮 उल्टी-दस्त' : '🤮 Vomiting',
+                      lang === 'hi' ? '😮‍💨 खांसी' : '😮‍💨 Cough',
+                      lang === 'hi' ? '💊 प्रिस्क्रिप्शन' : '💊 Prescription',
                     ].map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => handleSendChat(chip)}
-                        className="text-[10px] px-2 py-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition cursor-pointer"
-                      >
+                      <button key={chip} type="button" onClick={() => handleSendChat(chip)} className="text-[10px] px-2 py-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition cursor-pointer">
                         {chip}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Chat Messages Stream with INTERACTIVE PRESCRIPTION CARDS */}
+                {/* Chat Messages */}
                 <div className="flex-1 p-3 overflow-y-auto space-y-3 text-xs">
                   {chatMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`flex flex-col ${
-                        msg.sender === 'patient' ? 'items-end' : 'items-start'
-                      }`}
-                    >
-                      <div
-                        className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
-                          msg.sender === 'patient'
-                            ? 'bg-indigo-600 text-white rounded-br-none shadow-sm'
-                            : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-bl-none shadow-sm'
-                        }`}
-                      >
+                    <div key={i} className={`flex flex-col ${msg.sender === 'patient' ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${msg.sender === 'patient' ? 'bg-indigo-600 text-white rounded-br-none shadow-sm' : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-bl-none shadow-sm'}`}>
                         <p>{msg.text}</p>
-
-                        {/* PRESCRIBED MEDICINE CARD INSIDE CHAT */}
                         {msg.prescribedMed && (
                           <div className="mt-2.5 p-3 rounded-xl bg-slate-950/80 border border-emerald-500/50 text-white space-y-1.5 shadow-md">
                             <div className="flex items-center justify-between border-b border-emerald-500/30 pb-1">
                               <span className="text-[10px] font-black uppercase text-emerald-400 flex items-center gap-1">
                                 <Pill className="w-3.5 h-3.5" /> {t.inCallPrescription || 'Doctor Prescribed (Rx)'}
                               </span>
-                              <span className="text-[10px] bg-emerald-950 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                                {msg.prescribedMed.duration}
-                              </span>
+                              <span className="text-[10px] bg-emerald-950 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded-full font-bold">{msg.prescribedMed.duration}</span>
                             </div>
-
-                            <div className="font-bold text-sm text-emerald-300">
-                              {msg.prescribedMed.name}
-                            </div>
-
+                            <div className="font-bold text-sm text-emerald-300">{msg.prescribedMed.name}</div>
                             <div className="text-[11px] text-slate-200">
-                              <span className="text-slate-400">{t.dosage || 'Dosage'}:</span>{' '}
-                              <strong className="text-white">{msg.prescribedMed.dosage}</strong> •{' '}
-                              {msg.prescribedMed.frequency}
+                              <span className="text-slate-400">{t.dosage || 'Dosage'}:</span> <strong className="text-white">{msg.prescribedMed.dosage}</strong> • {msg.prescribedMed.frequency}
                             </div>
-
-                            <div className="text-[10px] text-slate-400 italic">
-                              {t.instructions || 'Instructions'}: {msg.prescribedMed.instructions}
-                            </div>
+                            <div className="text-[10px] text-slate-400 italic">{t.instructions || 'Instructions'}: {msg.prescribedMed.instructions}</div>
                           </div>
                         )}
                       </div>
@@ -908,112 +1153,55 @@ export const TelemedicineSection: React.FC<{ lang: LanguageCode }> = ({ lang }) 
                   ))}
                 </div>
 
-                {/* In-Call Chat Input */}
+                {/* Chat Input */}
                 <div className="p-2.5 border-t border-slate-800 flex items-center gap-2">
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                    placeholder={t.typeSymptomsPlaceholder || 'Describe your health problem for prescription...'}
+                    placeholder={t.typeSymptomsPlaceholder || 'Describe your health problem...'}
                     className="flex-1 bg-slate-800 text-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
-                  <button
-                    type="button"
-                    onClick={() => handleSendChat()}
-                    className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl cursor-pointer transition shadow-md"
-                    title="Send Problem"
-                  >
+                  <button type="button" onClick={() => handleSendChat()} className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl cursor-pointer transition shadow-md">
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-            </div>
 
-            {/* Video Call Controls Toolbar */}
-            <div className="px-6 py-3.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span className="hidden sm:inline">Active Consultation:</span>
-                <span className="font-mono text-indigo-400 font-bold hidden sm:inline">
-                  {prescribedList.length} Medicines Prescribed
-                </span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3">
-                {/* Mic Mute / Unmute */}
-                <button
-                  type="button"
-                  onClick={handleToggleMic}
-                  className={`p-3 rounded-full cursor-pointer transition ${
-                    isMicOn
-                      ? 'bg-slate-800 hover:bg-slate-700 text-white'
-                      : 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-500/20'
-                  }`}
-                  title={isMicOn ? 'Mute Microphone' : 'Unmute Microphone'}
-                >
+              {/* Bottom Controls Toolbar */}
+              <div className="absolute bottom-0 left-0 right-80 px-6 py-4 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-center gap-4">
+                {/* Mute */}
+                <button type="button" onClick={handleToggleMic}
+                  className={`p-4 rounded-full cursor-pointer transition ${isMicOn ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-500/30'}`}
+                  title={isMicOn ? 'Mute' : 'Unmute'}>
                   {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
                 </button>
-
-                {/* Video On / Off */}
-                <button
-                  type="button"
-                  onClick={handleToggleVideo}
-                  className={`p-3 rounded-full cursor-pointer transition ${
-                    isVideoOn
-                      ? 'bg-slate-800 hover:bg-slate-700 text-white'
-                      : 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-500/20'
-                  }`}
-                  title={isVideoOn ? 'Turn Camera Off' : 'Turn Camera On'}
-                >
+                {/* Camera */}
+                <button type="button" onClick={handleToggleVideo}
+                  className={`p-4 rounded-full cursor-pointer transition ${isVideoOn ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-500/30'}`}
+                  title={isVideoOn ? 'Camera Off' : 'Camera On'}>
                   {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
                 </button>
-
-                {/* Doctor Audio Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setIsSpeakerOn(!isSpeakerOn)}
-                  className={`p-3 rounded-full cursor-pointer transition ${
-                    isSpeakerOn ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-amber-600 text-white'
-                  }`}
-                  title={isSpeakerOn ? 'Mute Doctor Speaker' : 'Unmute Doctor Speaker'}
-                >
+                {/* Speaker */}
+                <button type="button" onClick={() => setIsSpeakerOn(!isSpeakerOn)}
+                  className={`p-4 rounded-full cursor-pointer transition ${isSpeakerOn ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-amber-600 text-white'}`}>
                   {isSpeakerOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
                 </button>
-
-                {/* Screen Share Simulation */}
-                <button
-                  type="button"
-                  onClick={() => setIsScreenSharing(!isScreenSharing)}
-                  className={`p-3 rounded-full cursor-pointer transition ${
-                    isScreenSharing ? 'bg-indigo-600 text-white' : 'bg-slate-800 hover:bg-slate-700 text-white'
-                  }`}
-                  title="Share Medical Records"
-                >
-                  <Share2 className="w-5 h-5" />
+                {/* Chat Toggle Mobile */}
+                <button type="button" onClick={() => setIsChatOpen(!isChatOpen)}
+                  className="p-4 rounded-full bg-white/20 hover:bg-white/30 text-white cursor-pointer transition md:hidden">
+                  <MessageSquare className="w-5 h-5" />
                 </button>
-
-                {/* End Call Button */}
-                <button
-                  type="button"
-                  onClick={handleEndCall}
-                  className="px-5 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-lg transition active:scale-95"
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  <span>End Consultation & Get Rx</span>
+                {/* End Call */}
+                <button type="button" onClick={handleEndCall}
+                  className="px-7 py-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-sm flex items-center gap-2 cursor-pointer shadow-2xl transition active:scale-95">
+                  <PhoneOff className="w-5 h-5" />
+                  <span>End Call</span>
                 </button>
               </div>
-
-              {/* Chat Toggle Mobile */}
-              <button
-                type="button"
-                onClick={() => setIsChatOpen(!isChatOpen)}
-                className="md:hidden p-2.5 rounded-xl bg-slate-800 text-slate-300"
-              >
-                <MessageSquare className="w-4 h-4" />
-              </button>
             </div>
-          </div>
+          )}
         </div>
       )}
 
