@@ -243,7 +243,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     reportTitle: 'AI Medical Report Scanner & Explainer',
     reportSubtitle: 'Upload lab test reports (PDF, JPG, PNG) for instant OCR analysis and plain-language explanation',
     uploadReport: 'Upload Medical Report',
-    dropFiles: 'Drop PDF / JPG / PNG report or select sample below',
+    dropFiles: 'Drop PDF / JPG / PNG report or upload file above',
     analyzingReport: 'AI Analyzing Report with OCR...',
     reportSummary: 'AI Clinical Summary',
     keyFindings: 'Identified Lab Parameters',

@@ -25,7 +25,7 @@ import {
   Settings,
   Send,
 } from 'lucide-react';
-import { INITIAL_MEDICINES, SAMPLE_REPORTS, type MedicineItem, type MedicalReport } from './mockData';
+import { INITIAL_MEDICINES, type MedicineItem, type MedicalReport } from './mockData';
 import { resolveGlobalMedicine } from './globalPharmacology';
 import {
   analyzeMedicineWithAi,

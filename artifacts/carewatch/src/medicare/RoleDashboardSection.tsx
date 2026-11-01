@@ -20,7 +20,7 @@ import {
   Send,
 } from 'lucide-react';
 import { type LanguageCode, TRANSLATIONS } from './translations';
-import { INITIAL_HOSPITALS, SAMPLE_REPORTS, INITIAL_MEDICINES } from './mockData';
+import { INITIAL_HOSPITALS, INITIAL_MEDICINES } from './mockData';
 
 export const RoleDashboardSection: React.FC<{
   lang: LanguageCode;
