@@ -44,7 +44,7 @@ import {
 } from './aiMedicalService';
 
 export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
-  // Empty by default: No pre-existing sample reports loaded on screen
+  // CLEAN STATE: No sample reports, no pre-loaded data - user uploads own medical document
   const [reports, setReports] = useState<MedicalReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<MedicalReport | null>(null);
   const [isScanning, setIsScanning] = useState(false);
