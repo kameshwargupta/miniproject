@@ -1,0 +1,12 @@
+[build]
+  command = "pnpm run build:frontend"
+  publish = "artifacts/carewatch/dist/public"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Single-page app: serve index.html for client-side routes like /patients/123
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
