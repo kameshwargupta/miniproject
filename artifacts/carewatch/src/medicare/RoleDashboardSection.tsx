@@ -18,14 +18,19 @@ import {
   User,
   Plus,
   Send,
+  LogIn,
+  UserPlus,
 } from 'lucide-react';
 import { type LanguageCode, TRANSLATIONS } from './translations';
 import { INITIAL_HOSPITALS, INITIAL_MEDICINES } from './mockData';
+import { type AuthUser } from './authService';
 
 export const RoleDashboardSection: React.FC<{
   lang: LanguageCode;
+  currentUser?: AuthUser | null;
   onNavigateTab: (tab: string) => void;
-}> = ({ lang, onNavigateTab }) => {
+  onOpenAuth?: (tab?: 'login' | 'register') => void;
+}> = ({ lang, currentUser, onNavigateTab, onOpenAuth }) => {
   const [activeRole, setActiveRole] = useState<'patient' | 'doctor' | 'hospital' | 'pharmacy'>('patient');
 
   // Doctor state
@@ -74,6 +79,77 @@ export const RoleDashboardSection: React.FC<{
 
   return (
     <div className="space-y-6">
+      {/* Prominent Login & Sign In Banner */}
+      {!currentUser ? (
+        <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 rounded-2xl p-5 text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-black uppercase tracking-wider text-cyan-100">
+                {lang === 'hi' ? '🔑 लॉगिन व साइन इन सुविधा' : '🔑 Log In & Sign In'}
+              </span>
+              <span className="text-xs text-blue-100 font-semibold">PostgreSQL Cloud Sync</span>
+            </div>
+            <h3 className="text-lg md:text-xl font-black tracking-tight">
+              {lang === 'hi'
+                ? 'अपने स्वास्थ्य खाते में लॉगिन करें या नया खाता बनाएं'
+                : 'Sign In to Your Health Account or Create New Profile'}
+            </h3>
+            <p className="text-xs md:text-sm text-blue-100 max-w-xl">
+              {lang === 'hi'
+                ? 'ओपीडी टोकन, एआई लैब रिपोर्ट्स और दवा रिमाइंडर सीधे अपने खाते में सुरक्षित रूप से सहेजने के लिए अभी लॉगिन करें।'
+                : 'Save your OPD tokens, AI report analyses, and medicine schedules safely in your real database.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => (onOpenAuth ? onOpenAuth('login') : onNavigateTab('account'))}
+              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{lang === 'hi' ? 'लॉगिन करें (Log In)' : 'Log In'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => (onOpenAuth ? onOpenAuth('register') : onNavigateTab('account'))}
+              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-slate-900/40 hover:bg-slate-900/60 border border-white/30 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>{lang === 'hi' ? 'नया खाता बनाएं (Sign In)' : 'Sign In / Register'}</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
+              {currentUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold text-sm text-emerald-950 dark:text-emerald-100">
+                  {lang === 'hi' ? 'सक्रिय खाता:' : 'Logged In User:'} {currentUser.name}
+                </h4>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-[10px] font-extrabold uppercase">
+                  {currentUser.role}
+                </span>
+              </div>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                {currentUser.email} • {lang === 'hi' ? 'डेटाबेस से लाइव कनेक्टेड' : 'Connected to Neon PostgreSQL'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('account')}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+          >
+            {lang === 'hi' ? 'खाता विवरण देखें' : 'View Account & DB'} &rarr;
+          </button>
+        </div>
+      )}
+
       {/* Role Switcher Pill Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs flex flex-wrap gap-2 items-center justify-between">
         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">

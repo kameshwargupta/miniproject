@@ -19,6 +19,10 @@ import {
   User,
   Database,
   UserCheck,
+  LogIn,
+  LogOut,
+  UserPlus,
+  KeyRound,
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES, type LanguageCode, TRANSLATIONS } from './translations';
 import { FloatingCopilot } from './FloatingCopilot';
@@ -32,7 +36,7 @@ import { EmergencySection } from './EmergencySection';
 import { RoleDashboardSection } from './RoleDashboardSection';
 import { AuthSection } from './AuthSection';
 import { AuthModal } from './AuthModal';
-import { getCurrentUser, subscribeAuth, type AuthUser } from './authService';
+import { getCurrentUser, subscribeAuth, logout, type AuthUser } from './authService';
 
 export const MediCareApp: React.FC = () => {
   const [lang, setLang] = useState<LanguageCode>('en');
@@ -43,6 +47,7 @@ export const MediCareApp: React.FC = () => {
   // TiDB Auth & User Session
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(getCurrentUser());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'database'>('login');
 
   // Hospital Navigation & Selection
   const [selectedHospitalForPharmacy, setSelectedHospitalForPharmacy] = useState<string>('all');
@@ -71,7 +76,7 @@ export const MediCareApp: React.FC = () => {
 
   const navItems = [
     { id: 'dashboard', label: t.navDashboard, icon: LayoutDashboard },
-    { id: 'account', label: lang === 'hi' ? 'साइन इन व डेटाबेस' : 'Sign In & DB', icon: UserCheck },
+    { id: 'account', label: lang === 'hi' ? 'लॉगिन एवं खाता' : 'Login & Account', icon: KeyRound },
     { id: 'queue', label: t.navQueue, icon: Ticket },
     { id: 'reports', label: t.navReportScanner, icon: FileText },
     { id: 'medicines', label: t.navMedicineScanner, icon: Pill },
@@ -125,26 +130,71 @@ export const MediCareApp: React.FC = () => {
 
           {/* Right Action Bar: Database Auth, Language Selector, Dark Mode, Emergency Pill */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* User Profile / Login Navigation Button */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('account')}
-              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
-              title="Neon PostgreSQL / Cloud Authentication"
-            >
-              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                {currentUser ? currentUser.name.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
+            {/* User Profile / Login & Sign In Action Buttons */}
+            {currentUser ? (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('account')}
+                  className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-300 transition-all cursor-pointer shadow-xs"
+                  title="Neon PostgreSQL Account Settings"
+                >
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-left hidden sm:block">
+                    <span className="block text-xs font-bold leading-tight truncate max-w-[110px]">
+                      {currentUser.name}
+                    </span>
+                    <span className="flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold leading-none">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {currentUser.role}
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setCurrentUser(null);
+                  }}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all cursor-pointer flex items-center gap-1"
+                  title="Log Out"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-red-500" />
+                  <span className="hidden sm:inline font-bold">{lang === 'hi' ? 'लॉगआउट' : 'Logout'}</span>
+                </button>
               </div>
-              <div className="text-left hidden sm:block">
-                <span className="block text-xs font-bold leading-tight truncate max-w-[110px]">
-                  {currentUser ? currentUser.name : (lang === 'hi' ? 'लॉगिन / साइन इन' : 'Sign In')}
-                </span>
-                <span className="flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold leading-none">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  PostgreSQL
-                </span>
+            ) : (
+              <div className="flex items-center gap-1 sm:gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthModalTab('login');
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 shadow-xs cursor-pointer transition-all"
+                  title="Log In"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
+                  <span>{lang === 'hi' ? 'लॉगिन' : 'Log In'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthModalTab('register');
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer transition-all"
+                  title="Sign In / Register"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>{lang === 'hi' ? 'साइन इन' : 'Sign In'}</span>
+                </button>
               </div>
-            </button>
+            )}
 
             {/* 11 Regional Languages Dropdown */}
             <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -283,21 +333,64 @@ export const MediCareApp: React.FC = () => {
                 </button>
               </div>
 
-              {/* Mobile Auth Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setActiveTab('account');
-                }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-700 dark:text-blue-300 cursor-pointer"
-              >
+              {/* Mobile Auth Buttons */}
+              {currentUser ? (
                 <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-blue-600" />
-                  <span>{currentUser ? currentUser.name : (lang === 'hi' ? 'साइन इन / खाता' : 'Sign In / Register')}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setActiveTab('account');
+                    }}
+                    className="flex-1 flex items-center justify-between p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-700 dark:text-blue-300 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-blue-600" />
+                      <span>{currentUser.name}</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">● Postgres</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      setCurrentUser(null);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-red-600 bg-red-50 dark:bg-red-950/30 cursor-pointer"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
                 </div>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">● Postgres</span>
-              </button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setAuthModalTab('login');
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <LogIn className="w-4 h-4 text-blue-600" />
+                    <span>{lang === 'hi' ? 'लॉगिन' : 'Log In'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setAuthModalTab('register');
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="p-3 rounded-xl bg-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>{lang === 'hi' ? 'साइन इन' : 'Sign In'}</span>
+                  </button>
+                </div>
+              )}
 
               <nav className="space-y-1">
                 {navItems.map((item) => {
@@ -333,7 +426,12 @@ export const MediCareApp: React.FC = () => {
           {activeTab === 'dashboard' && (
             <RoleDashboardSection
               lang={lang}
+              currentUser={currentUser}
               onNavigateTab={setActiveTab}
+              onOpenAuth={(tab) => {
+                setAuthModalTab(tab || 'login');
+                setIsAuthModalOpen(true);
+              }}
             />
           )}
           {activeTab === 'account' && (
@@ -368,6 +466,7 @@ export const MediCareApp: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         lang={lang}
+        initialTab={authModalTab}
         onUserChanged={setCurrentUser}
       />
     </div>

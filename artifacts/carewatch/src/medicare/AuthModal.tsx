@@ -39,6 +39,7 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   lang?: LanguageCode;
+  initialTab?: 'login' | 'register' | 'database';
   onUserChanged?: (user: AuthUser | null) => void;
 }
 
@@ -46,9 +47,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   lang = 'en',
+  initialTab = 'login',
   onUserChanged,
 }) => {
-  const [tab, setTab] = useState<'login' | 'register' | 'database'>('login');
+  const [tab, setTab] = useState<'login' | 'register' | 'database'>(initialTab);
   const [dbSubTab, setDbSubTab] = useState<'users' | 'logs' | 'tokens' | 'reports' | 'reminders'>('users');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(getCurrentUser());
 
@@ -76,10 +78,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) setTab(initialTab);
       setCurrentUser(getCurrentUser());
       loadDbData();
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   const loadDbData = async () => {
     setRefreshingDb(true);
