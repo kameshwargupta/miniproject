@@ -33,6 +33,7 @@ import {
 import { INITIAL_HOSPITALS, INITIAL_QUEUE_PATIENTS, type QueueToken, type Hospital } from './mockData';
 import { type LanguageCode, TRANSLATIONS } from './translations';
 import { useVoice } from './voiceService';
+import { bookQueueToken, fetchQueueTokens } from './authService';
 
 export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   const [hospitals] = useState<Hospital[]>(INITIAL_HOSPITALS);
@@ -57,6 +58,32 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
 
   // 15 Registered Patients Loaded by Default
   const [activeTokens, setActiveTokens] = useState<QueueToken[]>(INITIAL_QUEUE_PATIENTS);
+
+  useEffect(() => {
+    fetchQueueTokens().then((dbTokens) => {
+      if (dbTokens && dbTokens.length > 0) {
+        const formatted: QueueToken[] = dbTokens.map((d: any) => ({
+          id: d.id,
+          tokenNumber: d.token_number,
+          hospitalName: d.hospital_name,
+          departmentName: d.department_name,
+          patientName: d.patient_name,
+          patientPhone: d.patient_phone || '',
+          patientAge: d.patient_age || 25,
+          patientGender: (d.patient_gender as any) || 'Male',
+          problem: d.problem || '',
+          queuePosition: d.queue_position || 1,
+          currentServing: d.current_serving || 1,
+          estimatedWaitMinutes: d.estimated_wait_minutes || 10,
+          status: (d.status as any) || 'Waiting',
+          bookedAt: d.booked_at ? new Date(d.booked_at).toLocaleTimeString() : 'Recent',
+          doctorName: d.doctor_name,
+          roomNumber: d.room_number,
+        }));
+        setActiveTokens((prev) => [...formatted, ...prev]);
+      }
+    });
+  }, []);
   const [servingTokenNum, setServingTokenNum] = useState<number>(20);
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -260,7 +287,23 @@ export const SmartQueueSection: React.FC<{ lang: LanguageCode }> = ({ lang }) =>
       roomNumber: 'OPD Room 104',
     };
 
-    setActiveTokens([...activeTokens, newToken]);
+    setActiveTokens([newToken, ...activeTokens]);
+    bookQueueToken({
+      token_number: newToken.tokenNumber,
+      patient_name: newToken.patientName,
+      patient_phone: newToken.patientPhone,
+      patient_age: newToken.patientAge,
+      patient_gender: newToken.patientGender,
+      hospital_name: newToken.hospitalName,
+      department_name: newToken.departmentName,
+      queue_position: newToken.queuePosition,
+      current_serving: newToken.currentServing,
+      estimated_wait_minutes: newToken.estimatedWaitMinutes,
+      status: newToken.status,
+      doctor_name: newToken.doctorName,
+      room_number: newToken.roomNumber,
+      problem: newToken.problem,
+    });
     setBookingSuccess(true);
     setSelectedTokenForPass(newToken);
     setTimeout(() => setBookingSuccess(false), 5000);

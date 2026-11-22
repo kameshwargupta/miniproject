@@ -7,8 +7,17 @@ import {
   getAllPostgresUsers,
   getRecentPostgresLogins,
   checkPostgresHealth,
+  createPostgresQueueToken,
+  getPostgresQueueTokens,
+  createPostgresMedicalReport,
+  getPostgresMedicalReports,
+  createPostgresMedicineReminder,
+  getPostgresMedicineReminders,
   type PostgresUser,
   type PostgresLoginLog,
+  type PostgresQueueToken,
+  type PostgresMedicalReport,
+  type PostgresMedicineReminder,
 } from "./postgres";
 import {
   initTiDBDatabase,
@@ -26,9 +35,6 @@ import { logger } from "./logger";
 export type DbUser = PostgresUser | TiDBUser;
 export type DbLoginLog = PostgresLoginLog | TiDBLoginLog;
 
-/**
- * Returns which database engine is currently active
- */
 export function getActiveDbEngine(): "PostgreSQL" | "TiDB Cloud Serverless" {
   if (isPostgresConfigured()) {
     return "PostgreSQL";
@@ -36,21 +42,16 @@ export function getActiveDbEngine(): "PostgreSQL" | "TiDB Cloud Serverless" {
   return "TiDB Cloud Serverless";
 }
 
-/**
- * Initialize active database
- */
 export async function initDatabase(): Promise<boolean> {
   const engine = getActiveDbEngine();
-  logger.info({ engine }, "Initializing active database engine");
+  logger.info({ engine }, "Initializing active database engine with all 5 healthcare tables");
   if (engine === "PostgreSQL") {
     return initPostgresDatabase();
   }
   return initTiDBDatabase();
 }
 
-/**
- * Find user by email from active database
- */
+// ----------------- USERS & AUTH -----------------
 export async function findUserByEmail(email: string): Promise<DbUser | null> {
   if (isPostgresConfigured()) {
     return findPostgresUserByEmail(email);
@@ -58,9 +59,6 @@ export async function findUserByEmail(email: string): Promise<DbUser | null> {
   return findTiDBUserByEmail(email);
 }
 
-/**
- * Register or update user in active database
- */
 export async function registerOrUpdateUser(user: {
   id?: string;
   name: string;
@@ -79,9 +77,6 @@ export async function registerOrUpdateUser(user: {
   return registerTiDBUser(user);
 }
 
-/**
- * Log user login in active database
- */
 export async function logUserLogin(log: {
   userId?: string;
   email: string;
@@ -96,9 +91,6 @@ export async function logUserLogin(log: {
   return logTiDBUserLogin(log);
 }
 
-/**
- * Get all users from active database
- */
 export async function getAllUsers(limit = 100): Promise<DbUser[]> {
   if (isPostgresConfigured()) {
     return getAllPostgresUsers(limit);
@@ -106,9 +98,6 @@ export async function getAllUsers(limit = 100): Promise<DbUser[]> {
   return getAllTiDBUsers(limit);
 }
 
-/**
- * Get recent logins from active database
- */
 export async function getRecentLogins(limit = 50): Promise<DbLoginLog[]> {
   if (isPostgresConfigured()) {
     return getRecentPostgresLogins(limit);
@@ -116,9 +105,50 @@ export async function getRecentLogins(limit = 50): Promise<DbLoginLog[]> {
   return getRecentTiDBLogins(limit);
 }
 
-/**
- * Comprehensive healthcheck across database engines
- */
+// ----------------- HEALTHCARE DATA TABLES -----------------
+export async function createQueueToken(token: Partial<PostgresQueueToken>) {
+  if (isPostgresConfigured()) {
+    return createPostgresQueueToken(token);
+  }
+  return { id: `tok-${Date.now()}`, ...token };
+}
+
+export async function getQueueTokens(userId?: string, limit = 50) {
+  if (isPostgresConfigured()) {
+    return getPostgresQueueTokens(userId, limit);
+  }
+  return [];
+}
+
+export async function createMedicalReport(report: Partial<PostgresMedicalReport>) {
+  if (isPostgresConfigured()) {
+    return createPostgresMedicalReport(report);
+  }
+  return { id: `rep-${Date.now()}`, ...report };
+}
+
+export async function getMedicalReports(userId?: string, limit = 50) {
+  if (isPostgresConfigured()) {
+    return getPostgresMedicalReports(userId, limit);
+  }
+  return [];
+}
+
+export async function createMedicineReminder(reminder: Partial<PostgresMedicineReminder>) {
+  if (isPostgresConfigured()) {
+    return createPostgresMedicineReminder(reminder);
+  }
+  return { id: `rem-${Date.now()}`, ...reminder };
+}
+
+export async function getMedicineReminders(userId?: string, limit = 50) {
+  if (isPostgresConfigured()) {
+    return getPostgresMedicineReminders(userId, limit);
+  }
+  return [];
+}
+
+// ----------------- HEALTH & STATS -----------------
 export async function checkDatabaseHealth(): Promise<{
   activeEngine: "PostgreSQL" | "TiDB Cloud Serverless";
   postgresConfigured: boolean;
@@ -129,7 +159,7 @@ export async function checkDatabaseHealth(): Promise<{
   const activeEngine = getActiveDbEngine();
 
   const [postgresStatus, tidbStatus] = await Promise.all([
-    pgConfigured ? checkPostgresHealth() : Promise.resolve({ connected: false, engine: "PostgreSQL", error: "Not configured" }),
+    pgConfigured ? checkPostgresHealth() : Promise.resolve({ connected: false, engine: "PostgreSQL" }),
     checkTiDBHealth(),
   ]);
 

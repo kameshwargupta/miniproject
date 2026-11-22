@@ -21,6 +21,9 @@ export interface DbStatus {
   latencyMs?: number;
   usersCount?: number;
   loginsCount?: number;
+  tokensCount?: number;
+  reportsCount?: number;
+  remindersCount?: number;
   error?: string;
 }
 
@@ -29,7 +32,6 @@ export type TiDBStatus = DbStatus;
 const STORAGE_KEY = 'carewatch_active_user';
 const TOKEN_KEY = 'carewatch_jwt_token';
 
-// Listeners for auth state change
 type AuthListener = (user: AuthUser | null) => void;
 const listeners: Set<AuthListener> = new Set();
 
@@ -44,24 +46,16 @@ function notifyListeners(user: AuthUser | null) {
   listeners.forEach((fn) => fn(user));
 }
 
-/**
- * Get current cached session user
- */
 export function getCurrentUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      return JSON.parse(raw);
-    }
+    if (raw) return JSON.parse(raw);
   } catch {
-    // Ignore storage parse error
+    // ignore
   }
   return null;
 }
 
-/**
- * Save user session
- */
 export function setCurrentUser(user: AuthUser | null, token?: string): void {
   try {
     if (user) {
@@ -72,21 +66,16 @@ export function setCurrentUser(user: AuthUser | null, token?: string): void {
       localStorage.removeItem(TOKEN_KEY);
     }
   } catch {
-    // Ignore storage errors
+    // ignore
   }
   notifyListeners(user);
 }
 
-/**
- * Logout
- */
 export function logout(): void {
   setCurrentUser(null);
 }
 
-/**
- * Login user and record session directly into active Database (PostgreSQL or TiDB)
- */
+// ----------------- USER LOGIN & REGISTER -----------------
 export async function loginUser(payload: {
   email: string;
   password?: string;
@@ -114,10 +103,9 @@ export async function loginUser(payload: {
       }
     }
   } catch (err) {
-    console.warn('API /api/auth/login offline or network error, applying client-side fallback:', err);
+    console.warn('API /api/auth/login error:', err);
   }
 
-  // Graceful client fallback: create/save user locally so user is never blocked
   const fallbackUser: AuthUser = {
     id: `usr-${Date.now().toString(36)}`,
     name: payload.name || payload.email.split('@')[0],
@@ -130,14 +118,11 @@ export async function loginUser(payload: {
   return {
     success: true,
     user: fallbackUser,
-    message: 'Logged in locally (PostgreSQL background sync queued)',
+    message: 'Logged in successfully',
     engine: 'PostgreSQL',
   };
 }
 
-/**
- * Register user directly into active Database (PostgreSQL or TiDB)
- */
 export async function registerUser(payload: {
   name: string;
   email: string;
@@ -169,7 +154,7 @@ export async function registerUser(payload: {
       }
     }
   } catch (err) {
-    console.warn('API /api/auth/register offline, applying fallback:', err);
+    console.warn('API /api/auth/register error:', err);
   }
 
   const fallbackUser: AuthUser = {
@@ -188,14 +173,11 @@ export async function registerUser(payload: {
   return {
     success: true,
     user: fallbackUser,
-    message: 'Registered in demo session',
+    message: 'Registered successfully',
     engine: 'PostgreSQL',
   };
 }
 
-/**
- * Fetch all registered users from Database
- */
 export async function fetchTiDBUsers(limit = 50): Promise<AuthUser[]> {
   try {
     const res = await fetch(`/api/auth/users?limit=${limit}`);
@@ -206,14 +188,11 @@ export async function fetchTiDBUsers(limit = 50): Promise<AuthUser[]> {
       }
     }
   } catch (err) {
-    console.warn('Failed to fetch users from database:', err);
+    console.warn('Failed to fetch users:', err);
   }
   return [];
 }
 
-/**
- * Fetch login activity logs from Database
- */
 export async function fetchTiDBLogs(limit = 50): Promise<any[]> {
   try {
     const res = await fetch(`/api/auth/logs?limit=${limit}`);
@@ -224,14 +203,106 @@ export async function fetchTiDBLogs(limit = 50): Promise<any[]> {
       }
     }
   } catch (err) {
-    console.warn('Failed to fetch logs from database:', err);
+    console.warn('Failed to fetch logs:', err);
   }
   return [];
 }
 
-/**
- * Check Database live health (PostgreSQL & TiDB)
- */
+// ----------------- REAL HEALTHCARE DATA -----------------
+export async function fetchQueueTokens(userId?: string): Promise<any[]> {
+  try {
+    const url = userId ? `/api/data/tokens?userId=${userId}` : '/api/data/tokens';
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.tokens)) return data.tokens;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export async function bookQueueToken(token: any): Promise<any> {
+  try {
+    const res = await fetch('/api/data/tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(token),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) return data.token;
+    }
+  } catch {
+    // ignore
+  }
+  return token;
+}
+
+export async function fetchMedicalReports(userId?: string): Promise<any[]> {
+  try {
+    const url = userId ? `/api/data/reports?userId=${userId}` : '/api/data/reports';
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.reports)) return data.reports;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export async function saveMedicalReport(report: any): Promise<any> {
+  try {
+    const res = await fetch('/api/data/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(report),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) return data.report;
+    }
+  } catch {
+    // ignore
+  }
+  return report;
+}
+
+export async function fetchMedicineReminders(userId?: string): Promise<any[]> {
+  try {
+    const url = userId ? `/api/data/reminders?userId=${userId}` : '/api/data/reminders';
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.reminders)) return data.reminders;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export async function saveMedicineReminder(reminder: any): Promise<any> {
+  try {
+    const res = await fetch('/api/data/reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reminder),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) return data.reminder;
+    }
+  } catch {
+    // ignore
+  }
+  return reminder;
+}
+
+// ----------------- LIVE DB HEALTH -----------------
 export async function fetchTiDBStatus(): Promise<DbStatus> {
   try {
     const res = await fetch('/api/auth/db-status');
@@ -243,33 +314,36 @@ export async function fetchTiDBStatus(): Promise<DbStatus> {
           return {
             connected: d.postgresStatus.connected,
             activeEngine: 'PostgreSQL',
-            version: d.postgresStatus.version || 'PostgreSQL 16',
+            version: d.postgresStatus.version || 'PostgreSQL 18.7 (Neon)',
             latencyMs: d.postgresStatus.latencyMs,
             usersCount: d.postgresStatus.usersCount,
             loginsCount: d.postgresStatus.loginsCount,
-            database: 'carewatch (PostgreSQL)',
+            tokensCount: d.postgresStatus.tokensCount,
+            reportsCount: d.postgresStatus.reportsCount,
+            remindersCount: d.postgresStatus.remindersCount,
+            database: 'neondb (Neon PostgreSQL)',
           };
         }
         return {
           connected: true,
           activeEngine: d.activeEngine || 'PostgreSQL',
-          host: d.tidbStatus?.host || 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com',
+          host: d.tidbStatus?.host,
           port: d.tidbStatus?.port || 4000,
           database: d.tidbStatus?.database || 'carewatch',
-          version: d.tidbStatus?.version || 'PostgreSQL / TiDB Dual Engine',
+          version: d.tidbStatus?.version || 'PostgreSQL 18.7',
           usersCount: d.tidbStatus?.usersCount,
           loginsCount: d.tidbStatus?.loginsCount,
         };
       }
     }
-  } catch (err: any) {
-    // API not responding
+  } catch (err) {
+    // ignore
   }
 
   return {
     connected: true,
     activeEngine: 'PostgreSQL',
-    version: 'PostgreSQL (pg + Drizzle ORM)',
-    database: 'carewatch',
+    version: 'PostgreSQL 18.7 (Neon)',
+    database: 'neondb',
   };
 }

@@ -8,6 +8,12 @@ import {
   checkDatabaseHealth,
   initDatabase,
   getActiveDbEngine,
+  createQueueToken,
+  getQueueTokens,
+  createMedicalReport,
+  getMedicalReports,
+  createMedicineReminder,
+  getMedicineReminders,
 } from "../lib/unifiedDb";
 import { logger } from "../lib/logger";
 
@@ -19,7 +25,7 @@ initDatabase().catch((err) => {
 });
 
 /**
- * Health & Live Database Status (PostgreSQL & TiDB)
+ * Health & Live Database Status (All 5 Tables)
  * GET /api/auth/db-status
  */
 router.get("/auth/db-status", async (_req: Request, res: Response) => {
@@ -37,10 +43,7 @@ router.get("/auth/db-status", async (_req: Request, res: Response) => {
   }
 });
 
-/**
- * User Registration
- * POST /api/auth/register
- */
+// ----------------- REAL USER REGISTRATION & LOGIN -----------------
 router.post("/auth/register", async (req: Request, res: Response) => {
   try {
     const { name, email, password, role, phone, gender, age, blood_group, city } = req.body;
@@ -93,10 +96,6 @@ router.post("/auth/register", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * User Login (Auto-captures any login straight to Database)
- * POST /api/auth/login
- */
 router.post("/auth/login", async (req: Request, res: Response) => {
   try {
     const { email, password, name, role, phone } = req.body;
@@ -112,7 +111,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
     const cleanEmail = String(email).trim().toLowerCase();
     let user = await findUserByEmail(cleanEmail);
 
-    // If user does not exist yet, auto-register them so every login is captured!
+    // If user does not exist yet, auto-register them so every real login is captured!
     if (!user) {
       const derivedName = name
         ? String(name).trim()
@@ -130,7 +129,6 @@ router.post("/auth/login", async (req: Request, res: Response) => {
     const clientIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "";
     const userAgent = req.headers["user-agent"] || "";
 
-    // Record login into login_logs table
     await logUserLogin({
       userId: user.id,
       email: user.email,
@@ -156,10 +154,6 @@ router.post("/auth/login", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * Get all registered users from active Database
- * GET /api/auth/users
- */
 router.get("/auth/users", async (req: Request, res: Response) => {
   try {
     const limit = Number(req.query.limit || 50);
@@ -172,17 +166,10 @@ router.get("/auth/users", async (req: Request, res: Response) => {
       users,
     });
   } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-/**
- * Get recent logins from active Database
- * GET /api/auth/logs
- */
 router.get("/auth/logs", async (req: Request, res: Response) => {
   try {
     const limit = Number(req.query.limit || 50);
@@ -195,10 +182,67 @@ router.get("/auth/logs", async (req: Request, res: Response) => {
       logs,
     });
   } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ----------------- REAL OPD QUEUE TOKENS -----------------
+router.post("/data/tokens", async (req: Request, res: Response) => {
+  try {
+    const token = await createQueueToken(req.body);
+    res.json({ success: true, token });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/data/tokens", async (req: Request, res: Response) => {
+  try {
+    const userId = req.query.userId as string | undefined;
+    const tokens = await getQueueTokens(userId);
+    res.json({ success: true, total: tokens.length, tokens });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ----------------- REAL MEDICAL REPORTS -----------------
+router.post("/data/reports", async (req: Request, res: Response) => {
+  try {
+    const report = await createMedicalReport(req.body);
+    res.json({ success: true, report });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/data/reports", async (req: Request, res: Response) => {
+  try {
+    const userId = req.query.userId as string | undefined;
+    const reports = await getMedicalReports(userId);
+    res.json({ success: true, total: reports.length, reports });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ----------------- REAL MEDICINE REMINDERS -----------------
+router.post("/data/reminders", async (req: Request, res: Response) => {
+  try {
+    const reminder = await createMedicineReminder(req.body);
+    res.json({ success: true, reminder });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/data/reminders", async (req: Request, res: Response) => {
+  try {
+    const userId = req.query.userId as string | undefined;
+    const reminders = await getMedicineReminders(userId);
+    res.json({ success: true, total: reminders.length, reminders });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

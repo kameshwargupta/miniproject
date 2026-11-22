@@ -29,6 +29,49 @@ export interface PostgresLoginLog {
   login_time?: string;
 }
 
+export interface PostgresQueueToken {
+  id: string;
+  token_number: string;
+  user_id?: string;
+  patient_name: string;
+  patient_phone?: string;
+  patient_age?: number;
+  patient_gender?: string;
+  hospital_name: string;
+  department_name: string;
+  queue_position?: number;
+  current_serving?: number;
+  estimated_wait_minutes?: number;
+  status?: string;
+  doctor_name?: string;
+  room_number?: string;
+  problem?: string;
+  booked_at?: string;
+}
+
+export interface PostgresMedicalReport {
+  id: string;
+  user_id?: string;
+  patient_name: string;
+  test_type: string;
+  summary?: string;
+  overall_status?: string;
+  vitals_json?: string;
+  created_at?: string;
+}
+
+export interface PostgresMedicineReminder {
+  id: string;
+  user_id?: string;
+  medicine_name: string;
+  dosage?: string;
+  time?: string;
+  frequency?: string;
+  meal_timing?: string;
+  active?: boolean;
+  created_at?: string;
+}
+
 export interface PostgresHealth {
   connected: boolean;
   engine: "PostgreSQL";
@@ -39,15 +82,15 @@ export interface PostgresHealth {
   latencyMs?: number;
   usersCount?: number;
   loginsCount?: number;
+  tokensCount?: number;
+  reportsCount?: number;
+  remindersCount?: number;
   error?: string;
 }
 
 let pool: Pool | null = null;
 let isInitialized = false;
 
-/**
- * Checks if PostgreSQL configuration exists in environment variables
- */
 export function isPostgresConfigured(): boolean {
   if (process.env.POSTGRES_URL) return true;
   if (process.env.DATABASE_URL?.startsWith("postgres://") || process.env.DATABASE_URL?.startsWith("postgresql://")) {
@@ -57,9 +100,6 @@ export function isPostgresConfigured(): boolean {
   return false;
 }
 
-/**
- * Returns PostgreSQL Pool instance
- */
 export function getPostgresPool(): Pool | null {
   if (!isPostgresConfigured()) return null;
   if (pool) return pool;
@@ -70,8 +110,7 @@ export function getPostgresPool(): Pool | null {
       (process.env.DATABASE_URL?.startsWith("postgres") ? process.env.DATABASE_URL : undefined);
 
     if (connStr) {
-      // Strip channel_binding if present to avoid driver parsing issues with older node-postgres
-      const cleanConnStr = connStr.replace(/([&?])channel_binding=[^&]*/, '$1').replace(/[?&]$/, '');
+      const cleanConnStr = connStr.replace(/([&?])channel_binding=[^&]*/, "$1").replace(/[?&]$/, "");
       const isSsl = cleanConnStr.includes("sslmode=require") || process.env.PGSSL === "true";
       pool = new PgPool({
         connectionString: cleanConnStr,
@@ -85,7 +124,7 @@ export function getPostgresPool(): Pool | null {
       pool = new PgPool({
         host: process.env.PGHOST || "localhost",
         port: Number(process.env.PGPORT || 5432),
-        database: process.env.PGDATABASE || "carewatch",
+        database: process.env.PGDATABASE || "neondb",
         user: process.env.PGUSER || "postgres",
         password: process.env.PGPASSWORD || "",
         ssl: isSsl ? { rejectUnauthorized: false } : undefined,
@@ -108,7 +147,7 @@ export function getPostgresPool(): Pool | null {
 }
 
 /**
- * Automatically creates tables in PostgreSQL if not present
+ * Initializes all 5 project tables in PostgreSQL
  */
 export async function initPostgresDatabase(): Promise<boolean> {
   if (isInitialized) return true;
@@ -116,7 +155,7 @@ export async function initPostgresDatabase(): Promise<boolean> {
   if (!p) return false;
 
   try {
-    // 1. Create users table
+    // 1. Users
     await p.query(`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(64) PRIMARY KEY,
@@ -134,7 +173,7 @@ export async function initPostgresDatabase(): Promise<boolean> {
       );
     `);
 
-    // 2. Create login_logs table
+    // 2. Login Logs
     await p.query(`
       CREATE TABLE IF NOT EXISTS login_logs (
         id VARCHAR(64) PRIMARY KEY,
@@ -148,8 +187,60 @@ export async function initPostgresDatabase(): Promise<boolean> {
       );
     `);
 
+    // 3. Queue Tokens (Real Appointments)
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS queue_tokens (
+        id VARCHAR(64) PRIMARY KEY,
+        token_number VARCHAR(50) NOT NULL,
+        user_id VARCHAR(64),
+        patient_name VARCHAR(255) NOT NULL,
+        patient_phone VARCHAR(50) DEFAULT '',
+        patient_age INT DEFAULT 0,
+        patient_gender VARCHAR(20) DEFAULT '',
+        hospital_name VARCHAR(255) NOT NULL,
+        department_name VARCHAR(255) NOT NULL,
+        queue_position INT DEFAULT 1,
+        current_serving INT DEFAULT 1,
+        estimated_wait_minutes INT DEFAULT 15,
+        status VARCHAR(50) DEFAULT 'Waiting',
+        doctor_name VARCHAR(255) DEFAULT '',
+        room_number VARCHAR(100) DEFAULT '',
+        problem TEXT DEFAULT '',
+        booked_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 4. Medical Reports (Real Patient Reports)
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS medical_reports (
+        id VARCHAR(64) PRIMARY KEY,
+        user_id VARCHAR(64),
+        patient_name VARCHAR(255) NOT NULL,
+        test_type VARCHAR(255) NOT NULL,
+        summary TEXT,
+        overall_status VARCHAR(50) DEFAULT 'Normal',
+        vitals_json TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 5. Medicine Reminders (Real Reminders)
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS medicine_reminders (
+        id VARCHAR(64) PRIMARY KEY,
+        user_id VARCHAR(64),
+        medicine_name VARCHAR(255) NOT NULL,
+        dosage VARCHAR(100) DEFAULT '',
+        time VARCHAR(50) DEFAULT '',
+        frequency VARCHAR(100) DEFAULT '',
+        meal_timing VARCHAR(100) DEFAULT '',
+        active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     isInitialized = true;
-    logger.info("PostgreSQL tables verified/initialized successfully (users, login_logs)");
+    logger.info("PostgreSQL all 5 healthcare tables verified/initialized (users, login_logs, queue_tokens, medical_reports, medicine_reminders)");
     return true;
   } catch (err: any) {
     logger.warn({ err: err.message }, "PostgreSQL table init notice");
@@ -157,31 +248,22 @@ export async function initPostgresDatabase(): Promise<boolean> {
   }
 }
 
-/**
- * Find user by email in PostgreSQL
- */
+// ----------------- USER AUTH & PROFILES -----------------
 export async function findPostgresUserByEmail(email: string): Promise<PostgresUser | null> {
   const p = getPostgresPool();
   if (!p) return null;
-
   try {
-    const res: QueryResult = await p.query(
+    const res = await p.query(
       "SELECT id, name, email, role, phone, gender, age, blood_group, city, created_at FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1",
       [email.trim()],
     );
-    if (res.rows && res.rows.length > 0) {
-      return res.rows[0] as PostgresUser;
-    }
-    return null;
+    return (res.rows[0] as PostgresUser) || null;
   } catch (err) {
     logger.error({ err, email }, "Error finding user in PostgreSQL");
     return null;
   }
 }
 
-/**
- * Register or update user in PostgreSQL
- */
 export async function registerOrUpdatePostgresUser(user: {
   id?: string;
   name: string;
@@ -236,9 +318,6 @@ export async function registerOrUpdatePostgresUser(user: {
   return res.rows[0] as PostgresUser;
 }
 
-/**
- * Log user login in PostgreSQL
- */
 export async function logPostgresUserLogin(log: {
   userId?: string;
   email: string;
@@ -249,7 +328,6 @@ export async function logPostgresUserLogin(log: {
 }): Promise<void> {
   const p = getPostgresPool();
   if (!p) return;
-
   try {
     await initPostgresDatabase();
     const logId = `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -266,19 +344,14 @@ export async function logPostgresUserLogin(log: {
         (log.userAgent || "").slice(0, 500),
       ],
     );
-    logger.info({ user: log.email, role: log.role }, "User login recorded in PostgreSQL");
   } catch (err: any) {
     logger.warn({ err: err.message }, "Could not record login log in PostgreSQL");
   }
 }
 
-/**
- * Get all users from PostgreSQL
- */
 export async function getAllPostgresUsers(limit = 100): Promise<PostgresUser[]> {
   const p = getPostgresPool();
   if (!p) return [];
-
   try {
     await initPostgresDatabase();
     const res = await p.query(
@@ -287,18 +360,13 @@ export async function getAllPostgresUsers(limit = 100): Promise<PostgresUser[]> 
     );
     return res.rows as PostgresUser[];
   } catch (err) {
-    logger.error({ err }, "Error fetching users from PostgreSQL");
     return [];
   }
 }
 
-/**
- * Get recent logins from PostgreSQL
- */
 export async function getRecentPostgresLogins(limit = 50): Promise<PostgresLoginLog[]> {
   const p = getPostgresPool();
   if (!p) return [];
-
   try {
     await initPostgresDatabase();
     const res = await p.query(
@@ -307,14 +375,155 @@ export async function getRecentPostgresLogins(limit = 50): Promise<PostgresLogin
     );
     return res.rows as PostgresLoginLog[];
   } catch (err) {
-    logger.error({ err }, "Error fetching login logs from PostgreSQL");
     return [];
   }
 }
 
-/**
- * Check PostgreSQL health status and record counts
- */
+// ----------------- QUEUE TOKENS (APPOINTMENTS) -----------------
+export async function createPostgresQueueToken(token: Partial<PostgresQueueToken>): Promise<PostgresQueueToken> {
+  await initPostgresDatabase();
+  const p = getPostgresPool();
+  if (!p) throw new Error("Database pool unavailable");
+
+  const id = token.id || `tok-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const tokenNum = token.token_number || `A-${Math.floor(100 + Math.random() * 900)}`;
+
+  const res = await p.query(
+    `INSERT INTO queue_tokens (
+      id, token_number, user_id, patient_name, patient_phone, patient_age, patient_gender,
+      hospital_name, department_name, queue_position, current_serving, estimated_wait_minutes,
+      status, doctor_name, room_number, problem
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    RETURNING *;`,
+    [
+      id,
+      tokenNum,
+      token.user_id || null,
+      token.patient_name,
+      token.patient_phone || "",
+      token.patient_age || 0,
+      token.patient_gender || "",
+      token.hospital_name,
+      token.department_name,
+      token.queue_position || 1,
+      token.current_serving || 1,
+      token.estimated_wait_minutes || 15,
+      token.status || "Waiting",
+      token.doctor_name || "",
+      token.room_number || "",
+      token.problem || "",
+    ],
+  );
+  return res.rows[0] as PostgresQueueToken;
+}
+
+export async function getPostgresQueueTokens(userId?: string, limit = 50): Promise<PostgresQueueToken[]> {
+  const p = getPostgresPool();
+  if (!p) return [];
+  try {
+    await initPostgresDatabase();
+    if (userId) {
+      const res = await p.query(
+        "SELECT * FROM queue_tokens WHERE user_id = $1 ORDER BY booked_at DESC LIMIT $2",
+        [userId, limit],
+      );
+      return res.rows as PostgresQueueToken[];
+    }
+    const res = await p.query("SELECT * FROM queue_tokens ORDER BY booked_at DESC LIMIT $1", [limit]);
+    return res.rows as PostgresQueueToken[];
+  } catch (err) {
+    return [];
+  }
+}
+
+// ----------------- MEDICAL REPORTS -----------------
+export async function createPostgresMedicalReport(report: Partial<PostgresMedicalReport>): Promise<PostgresMedicalReport> {
+  await initPostgresDatabase();
+  const p = getPostgresPool();
+  if (!p) throw new Error("Database pool unavailable");
+
+  const id = report.id || `rep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const res = await p.query(
+    `INSERT INTO medical_reports (id, user_id, patient_name, test_type, summary, overall_status, vitals_json)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *;`,
+    [
+      id,
+      report.user_id || null,
+      report.patient_name,
+      report.test_type,
+      report.summary || "",
+      report.overall_status || "Normal",
+      report.vitals_json || "",
+    ],
+  );
+  return res.rows[0] as PostgresMedicalReport;
+}
+
+export async function getPostgresMedicalReports(userId?: string, limit = 50): Promise<PostgresMedicalReport[]> {
+  const p = getPostgresPool();
+  if (!p) return [];
+  try {
+    await initPostgresDatabase();
+    if (userId) {
+      const res = await p.query(
+        "SELECT * FROM medical_reports WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+        [userId, limit],
+      );
+      return res.rows as PostgresMedicalReport[];
+    }
+    const res = await p.query("SELECT * FROM medical_reports ORDER BY created_at DESC LIMIT $1", [limit]);
+    return res.rows as PostgresMedicalReport[];
+  } catch (err) {
+    return [];
+  }
+}
+
+// ----------------- MEDICINE REMINDERS -----------------
+export async function createPostgresMedicineReminder(reminder: Partial<PostgresMedicineReminder>): Promise<PostgresMedicineReminder> {
+  await initPostgresDatabase();
+  const p = getPostgresPool();
+  if (!p) throw new Error("Database pool unavailable");
+
+  const id = reminder.id || `rem-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const res = await p.query(
+    `INSERT INTO medicine_reminders (id, user_id, medicine_name, dosage, time, frequency, meal_timing, active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING *;`,
+    [
+      id,
+      reminder.user_id || null,
+      reminder.medicine_name,
+      reminder.dosage || "",
+      reminder.time || "",
+      reminder.frequency || "",
+      reminder.meal_timing || "",
+      reminder.active !== undefined ? reminder.active : true,
+    ],
+  );
+  return res.rows[0] as PostgresMedicineReminder;
+}
+
+export async function getPostgresMedicineReminders(userId?: string, limit = 50): Promise<PostgresMedicineReminder[]> {
+  const p = getPostgresPool();
+  if (!p) return [];
+  try {
+    await initPostgresDatabase();
+    if (userId) {
+      const res = await p.query(
+        "SELECT * FROM medicine_reminders WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+        [userId, limit],
+      );
+      return res.rows as PostgresMedicineReminder[];
+    }
+    const res = await p.query("SELECT * FROM medicine_reminders ORDER BY created_at DESC LIMIT $1", [limit]);
+    return res.rows as PostgresMedicineReminder[];
+  } catch (err) {
+    return [];
+  }
+}
+
+// ----------------- COMPREHENSIVE HEALTH CHECK -----------------
 export async function checkPostgresHealth(): Promise<PostgresHealth> {
   const start = Date.now();
   const p = getPostgresPool();
@@ -333,11 +542,23 @@ export async function checkPostgresHealth(): Promise<PostgresHealth> {
 
     let usersCount = 0;
     let loginsCount = 0;
+    let tokensCount = 0;
+    let reportsCount = 0;
+    let remindersCount = 0;
+
     try {
-      const uRes = await p.query("SELECT COUNT(*) as count FROM users;");
-      usersCount = Number(uRes.rows[0]?.count || 0);
-      const lRes = await p.query("SELECT COUNT(*) as count FROM login_logs;");
-      loginsCount = Number(lRes.rows[0]?.count || 0);
+      const [u, l, tk, rp, rm] = await Promise.all([
+        p.query("SELECT COUNT(*) as c FROM users;"),
+        p.query("SELECT COUNT(*) as c FROM login_logs;"),
+        p.query("SELECT COUNT(*) as c FROM queue_tokens;"),
+        p.query("SELECT COUNT(*) as c FROM medical_reports;"),
+        p.query("SELECT COUNT(*) as c FROM medicine_reminders;"),
+      ]);
+      usersCount = Number(u.rows[0]?.c || 0);
+      loginsCount = Number(l.rows[0]?.c || 0);
+      tokensCount = Number(tk.rows[0]?.c || 0);
+      reportsCount = Number(rp.rows[0]?.c || 0);
+      remindersCount = Number(rm.rows[0]?.c || 0);
     } catch {
       // tables may not yet exist
     }
@@ -349,6 +570,9 @@ export async function checkPostgresHealth(): Promise<PostgresHealth> {
       latencyMs,
       usersCount,
       loginsCount,
+      tokensCount,
+      reportsCount,
+      remindersCount,
     };
   } catch (err: any) {
     return {

@@ -23,6 +23,7 @@ import {
 import { type MedicineReminder } from './mockData';
 import { type LanguageCode, TRANSLATIONS } from './translations';
 import { useVoice } from './voiceService';
+import { saveMedicineReminder, fetchMedicineReminders } from './authService';
 
 // Safe local date string generator (YYYY-MM-DD) avoiding UTC midnight timezone shift
 const getLocalDateString = (offsetDays = 0): string => {
@@ -238,6 +239,31 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
     }
   };
 
+  // Load real reminders from database on mount
+  useEffect(() => {
+    fetchMedicineReminders().then((dbReminders) => {
+      if (dbReminders && dbReminders.length > 0) {
+        const formatted: MedicineReminder[] = dbReminders.map((d: any) => ({
+          id: d.id,
+          medicineName: d.medicine_name,
+          dosage: d.dosage || '1 Tablet',
+          time: d.time || '08:00 AM',
+          frequency: d.frequency || 'Daily',
+          mealTiming: (d.meal_timing as any) || 'After Meal',
+          startDate: getLocalDateString(0),
+          endDate: getLocalDateString(5),
+          durationDays: 5,
+          specificTimes: [d.time || '08:00 AM'],
+          alarmSoundEnabled: true,
+          notificationEnabled: true,
+          active: d.active !== undefined ? d.active : true,
+          taken: false,
+        }));
+        setReminders((prev) => [...formatted, ...prev]);
+      }
+    });
+  }, []);
+
   // Real-Time Clock Checker: checks current time every 10 seconds against reminders
   useEffect(() => {
     const checkClock = () => {
@@ -308,6 +334,14 @@ export const ReminderSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
     };
 
     setReminders([reminder, ...reminders]);
+    saveMedicineReminder({
+      medicine_name: reminder.medicineName,
+      dosage: reminder.dosage,
+      time: reminder.time,
+      frequency: reminder.frequency,
+      meal_timing: reminder.mealTiming,
+      active: reminder.active,
+    });
     setNewMed('');
     setShowAddForm(false);
     setStatusMessage(`Alarm scheduled for ${reminder.medicineName} at ${chosenTime}!`);

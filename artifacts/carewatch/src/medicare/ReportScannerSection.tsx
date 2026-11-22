@@ -36,6 +36,8 @@ import { type MedicalReport } from './mockData';
 import { ListenButton } from './ListenButton';
 import { type LanguageCode, TRANSLATIONS } from './translations';
 import { useVoice } from './voiceService';
+import { saveMedicalReport, fetchMedicalReports } from './authService';
+import { useEffect } from 'react';
 import {
   analyzeMedicalReportWithAi,
   getAiConfig,
@@ -46,6 +48,34 @@ import {
 export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang }) => {
   // CLEAN STATE: No sample reports, no pre-loaded data - user uploads own medical document
   const [reports, setReports] = useState<MedicalReport[]>([]);
+
+  useEffect(() => {
+    fetchMedicalReports().then((dbReports) => {
+      if (dbReports && dbReports.length > 0) {
+        const formatted: MedicalReport[] = dbReports.map((d: any) => {
+          let parsedVitals = [];
+          try {
+            parsedVitals = d.vitals_json ? JSON.parse(d.vitals_json) : [];
+          } catch {
+            parsedVitals = [];
+          }
+          return {
+            id: d.id,
+            patientName: d.patient_name,
+            reportDate: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Recent',
+            testType: d.test_type,
+            summary: d.summary || '',
+            mainPoints: [d.summary || 'Clinical extraction complete'],
+            overallStatus: (d.overall_status as any) || 'Normal',
+            vitalsAndValues: parsedVitals,
+            questionsForDoctor: [],
+            lifestyleAdvice: [],
+          };
+        });
+        setReports((prev) => [...formatted, ...prev]);
+      }
+    });
+  }, []);
   const [selectedReport, setSelectedReport] = useState<MedicalReport | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -178,6 +208,13 @@ export const ReportScannerSection: React.FC<{ lang: LanguageCode }> = ({ lang })
 
       setIsScanning(false);
       setReports((prev) => [analyzed, ...prev.filter((r) => r.id !== analyzed.id)]);
+      saveMedicalReport({
+        patient_name: analyzed.patientName,
+        test_type: analyzed.testType,
+        summary: analyzed.summary,
+        overall_status: analyzed.overallStatus,
+        vitals_json: JSON.stringify(analyzed.vitalsAndValues || []),
+      });
       setSelectedReport(analyzed);
 
       const announcement =
