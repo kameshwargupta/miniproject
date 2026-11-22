@@ -1,16 +1,15 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
 import * as schema from "./schema";
 
-const { Pool } = pg;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
-
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
-
 export * from "./schema";
+
+export const TIDB_CONFIG = {
+  host: process.env.TIDB_HOST || "gateway01.ap-northeast-1.prod.aws.tidbcloud.com",
+  port: Number(process.env.TIDB_PORT || 4000),
+  user: process.env.TIDB_USER || "2yubzc3at6JgYiJ.root",
+  password: process.env.TIDB_PASSWORD || "r9MOcOtabXnQHFie",
+  database: process.env.TIDB_DATABASE || "carewatch",
+  ssl: {
+    minVersion: "TLSv1.2",
+    rejectUnauthorized: false,
+  },
+};
