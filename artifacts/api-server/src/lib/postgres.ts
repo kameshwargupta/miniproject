@@ -70,9 +70,11 @@ export function getPostgresPool(): Pool | null {
       (process.env.DATABASE_URL?.startsWith("postgres") ? process.env.DATABASE_URL : undefined);
 
     if (connStr) {
-      const isSsl = connStr.includes("sslmode=require") || process.env.PGSSL === "true";
+      // Strip channel_binding if present to avoid driver parsing issues with older node-postgres
+      const cleanConnStr = connStr.replace(/([&?])channel_binding=[^&]*/, '$1').replace(/[?&]$/, '');
+      const isSsl = cleanConnStr.includes("sslmode=require") || process.env.PGSSL === "true";
       pool = new PgPool({
-        connectionString: connStr,
+        connectionString: cleanConnStr,
         ssl: isSsl ? { rejectUnauthorized: false } : undefined,
         max: 10,
         idleTimeoutMillis: 30000,
