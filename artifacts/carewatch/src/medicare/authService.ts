@@ -31,6 +31,21 @@ export type TiDBStatus = DbStatus;
 
 const STORAGE_KEY = 'carewatch_active_user';
 const TOKEN_KEY = 'carewatch_jwt_token';
+// Bump this version whenever you want to force all users to log in again
+const SESSION_VERSION = 'v3';
+const SESSION_VERSION_KEY = 'carewatch_session_version';
+
+// On module load: clear stale sessions from old versions
+(function clearStaleSession() {
+  try {
+    const storedVersion = localStorage.getItem(SESSION_VERSION_KEY);
+    if (storedVersion !== SESSION_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.setItem(SESSION_VERSION_KEY, SESSION_VERSION);
+    }
+  } catch { /* ignore */ }
+})();
 
 type AuthListener = (user: AuthUser | null) => void;
 const listeners: Set<AuthListener> = new Set();
@@ -60,6 +75,7 @@ export function setCurrentUser(user: AuthUser | null, token?: string): void {
   try {
     if (user) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      localStorage.setItem(SESSION_VERSION_KEY, SESSION_VERSION);
       if (token) localStorage.setItem(TOKEN_KEY, token);
     } else {
       localStorage.removeItem(STORAGE_KEY);
