@@ -15,10 +15,11 @@ import {
   LogIn,
   KeyRound,
   Server,
+  Layers,
 } from 'lucide-react';
 import {
   type AuthUser,
-  type TiDBStatus,
+  type DbStatus,
   getCurrentUser,
   loginUser,
   registerUser,
@@ -58,8 +59,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // TiDB Explorer States
-  const [tidbStatus, setTidbStatus] = useState<TiDBStatus | null>(null);
+  // Database Explorer States
+  const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
   const [registeredUsers, setRegisteredUsers] = useState<AuthUser[]>([]);
   const [loginLogs, setLoginLogs] = useState<any[]>([]);
   const [refreshingDb, setRefreshingDb] = useState(false);
@@ -67,11 +68,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setCurrentUser(getCurrentUser());
-      loadTiDBData();
+      loadDbData();
     }
   }, [isOpen]);
 
-  const loadTiDBData = async () => {
+  const loadDbData = async () => {
     setRefreshingDb(true);
     try {
       const [status, users, logs] = await Promise.all([
@@ -79,7 +80,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         fetchTiDBUsers(20),
         fetchTiDBLogs(20),
       ]);
-      setTidbStatus(status);
+      setDbStatus(status);
       setRegisteredUsers(users);
       setLoginLogs(logs);
     } catch {
@@ -106,14 +107,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (res.success) {
       setCurrentUser(res.user);
       if (onUserChanged) onUserChanged(res.user);
+      const eng = res.engine || dbStatus?.activeEngine || 'PostgreSQL / TiDB';
       setFeedbackMsg({
         type: 'success',
         text:
           lang === 'hi'
-            ? `स्वागत है ${res.user.name}! TiDB Cloud पर रिकॉर्ड सुरक्षित हो गया।`
-            : `Welcome back, ${res.user.name}! Synced with TiDB Cloud.`,
+            ? `स्वागत है ${res.user.name}! ${eng} डेटाबेस में रिकॉर्ड सुरक्षित हो गया।`
+            : `Welcome back, ${res.user.name}! Synced with ${eng}.`,
       });
-      loadTiDBData();
+      loadDbData();
       setTimeout(() => {
         onClose();
       }, 1200);
@@ -152,14 +154,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (res.success) {
       setCurrentUser(res.user);
       if (onUserChanged) onUserChanged(res.user);
+      const eng = res.engine || dbStatus?.activeEngine || 'PostgreSQL / TiDB';
       setFeedbackMsg({
         type: 'success',
         text:
           lang === 'hi'
-            ? `नया खाता बन गया! TiDB Cloud डेटाबेस में सेव हुआ।`
-            : `Account created successfully! Saved to TiDB Cloud.`,
+            ? `नया खाता बन गया! ${eng} डेटाबेस में सेव हुआ।`
+            : `Account created successfully! Saved to ${eng}.`,
       });
-      loadTiDBData();
+      loadDbData();
       setTimeout(() => {
         onClose();
       }, 1200);
@@ -206,15 +209,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black tracking-tight">CareWatch TiDB Cloud Auth</h3>
+                <h3 className="text-lg font-black tracking-tight">CareWatch Database Auth</h3>
                 <span className="text-[10px] bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 px-2 py-0.5 rounded-full font-bold">
-                  ● TiDB 4000 Live
+                  ● PostgreSQL + TiDB Ready
                 </span>
               </div>
               <p className="text-xs text-blue-100 font-medium">
                 {lang === 'hi'
-                  ? 'लॉगिन करते ही डेटा स्वचालित रूप से TiDB Cloud में सुरक्षित होता है'
-                  : 'Every login & registration instantly syncs with TiDB Cloud Serverless'}
+                  ? 'लॉगिन करते ही डेटा स्वचालित रूप से PostgreSQL / TiDB डेटाबेस में सुरक्षित होता है'
+                  : 'Every login & registration instantly syncs with PostgreSQL / TiDB Cloud'}
               </p>
             </div>
           </div>
@@ -263,7 +266,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }`}
           >
             <Server className="w-4 h-4" />
-            <span>{lang === 'hi' ? 'TiDB रिकॉर्ड्स (Live DB)' : 'TiDB Cloud Live'}</span>
+            <span>{lang === 'hi' ? 'डेटाबेस रिकॉर्ड्स (Live DB)' : 'Database Live Sync'}</span>
           </button>
         </div>
 
@@ -433,8 +436,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   )}
                   <span>
                     {lang === 'hi'
-                      ? 'लॉगिन करें और TiDB Cloud में सिंक करें'
-                      : 'Sign In & Sync Directly to TiDB Cloud'}
+                      ? 'लॉगिन करें और डेटाबेस में सुरक्षित करें'
+                      : 'Sign In & Sync Directly to Database'}
                   </span>
                 </button>
               </form>
@@ -574,34 +577,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                 <span>
                   {lang === 'hi'
-                    ? 'खाता बनाएं और TiDB Cloud में सेव करें'
-                    : 'Create Account & Save to TiDB Cloud'}
+                    ? 'खाता बनाएं और डेटाबेस में सेव करें'
+                    : 'Create Account & Save to Database'}
                 </span>
               </button>
             </form>
           )}
 
-          {/* TAB 3: TIDB DATABASE LIVE INSPECTOR */}
+          {/* TAB 3: DATABASE LIVE INSPECTOR */}
           {tab === 'database' && (
             <div className="space-y-4">
-              {/* TiDB Connection Card */}
+              {/* Database Dual Engine Info Card */}
               <div className="p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-md">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Database className="w-5 h-5 text-cyan-400" />
-                    <span className="text-sm font-black text-white">TiDB Cloud Serverless</span>
+                    <span className="text-sm font-black text-white">
+                      Active: {dbStatus?.activeEngine || 'PostgreSQL & TiDB Dual Engine'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      Connected (Port 4000)
+                      Live Ready
                     </span>
                     <button
                       type="button"
-                      onClick={loadTiDBData}
+                      onClick={loadDbData}
                       disabled={refreshingDb}
                       className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
-                      title="Refresh TiDB Data"
+                      title="Refresh Database Data"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${refreshingDb ? 'animate-spin' : ''}`} />
                     </button>
@@ -610,25 +615,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                   <div className="p-2 bg-slate-800/80 rounded-xl">
-                    <span className="text-slate-400 block text-[10px]">HOST</span>
+                    <span className="text-slate-400 block text-[10px]">POSTGRESQL</span>
                     <span className="font-mono text-cyan-300 font-bold truncate block">
-                      gateway01.ap-northeast-1...
+                      Drizzle ORM / pg
                     </span>
                   </div>
                   <div className="p-2 bg-slate-800/80 rounded-xl">
-                    <span className="text-slate-400 block text-[10px]">PORT</span>
-                    <span className="font-mono text-white font-bold block">4000</span>
+                    <span className="text-slate-400 block text-[10px]">TIDB PROTOCOL</span>
+                    <span className="font-mono text-white font-bold block">Port 4000 (TLS)</span>
                   </div>
                   <div className="p-2 bg-slate-800/80 rounded-xl">
                     <span className="text-slate-400 block text-[10px]">DATABASE</span>
                     <span className="font-mono text-emerald-300 font-bold block">
-                      {tidbStatus?.database || 'carewatch'}
+                      carewatch
                     </span>
                   </div>
                   <div className="p-2 bg-slate-800/80 rounded-xl">
-                    <span className="text-slate-400 block text-[10px]">USER</span>
+                    <span className="text-slate-400 block text-[10px]">AUTO-MIGRATION</span>
                     <span className="font-mono text-amber-300 font-bold truncate block">
-                      2yubzc3at6JgYiJ.root
+                      users, login_logs
                     </span>
                   </div>
                 </div>
@@ -640,7 +645,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-blue-600" />
                     <span>
-                      {lang === 'hi' ? 'TiDB में पंजीकृत उपयोगकर्ता (Users Table):' : 'TiDB Cloud `users` Table:'}
+                      {lang === 'hi' ? 'डेटाबेस में पंजीकृत उपयोगकर्ता (users table):' : 'Database `users` Table:'}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded font-bold">
                       {registeredUsers.length}
@@ -652,7 +657,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                     {lang === 'hi'
                       ? 'कोई भी लॉगिन करेगा तो यहां तुरंत दिखाई देगा'
-                      : 'Sign in above to see live records populate here from TiDB Cloud!'}
+                      : 'Sign in above to see live records populate here from Database!'}
                   </div>
                 ) : (
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
@@ -690,7 +695,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span>
-                      {lang === 'hi' ? 'TiDB हालिया लॉगिन सत्र (login_logs Table):' : 'TiDB Cloud `login_logs` Table:'}
+                      {lang === 'hi' ? 'हालिया लॉगिन सत्र (login_logs table):' : 'Database `login_logs` Table:'}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 rounded font-bold">
                       {loginLogs.length}
@@ -701,7 +706,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {loginLogs.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                     {lang === 'hi'
-                      ? 'लॉगिन सत्र TiDB क्लाउड में रिकॉर्ड किए जाते हैं'
+                      ? 'लॉगिन सत्र डेटाबेस में रिकॉर्ड किए जाते हैं'
                       : 'Login audit sessions will appear here as soon as users sign in.'}
                   </div>
                 ) : (

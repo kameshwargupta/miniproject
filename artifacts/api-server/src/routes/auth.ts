@@ -5,25 +5,26 @@ import {
   logUserLogin,
   getAllUsers,
   getRecentLogins,
-  checkTiDBHealth,
-  initTiDBDatabase,
-} from "../lib/tidb";
+  checkDatabaseHealth,
+  initDatabase,
+  getActiveDbEngine,
+} from "../lib/unifiedDb";
 import { logger } from "../lib/logger";
 
 const router = Router();
 
 // Auto-initialize DB on module load
-initTiDBDatabase().catch((err) => {
-  logger.warn({ err }, "TiDB background initialization error");
+initDatabase().catch((err) => {
+  logger.warn({ err }, "Database background initialization notice");
 });
 
 /**
- * Health & Live TiDB Connection Status
+ * Health & Live Database Status (PostgreSQL & TiDB)
  * GET /api/auth/db-status
  */
 router.get("/auth/db-status", async (_req: Request, res: Response) => {
   try {
-    const health = await checkTiDBHealth();
+    const health = await checkDatabaseHealth();
     res.json({
       success: true,
       data: health,
@@ -51,6 +52,7 @@ router.post("/auth/register", async (req: Request, res: Response) => {
       });
     }
 
+    const engine = getActiveDbEngine();
     const user = await registerOrUpdateUser({
       name: String(name).trim(),
       email: String(email).trim().toLowerCase(),
@@ -77,21 +79,22 @@ router.post("/auth/register", async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: "User registered successfully into TiDB Cloud!",
+      message: `User registered successfully into ${engine}!`,
+      engine,
       user,
-      token: `cw-tidb-token-${user.id}-${Date.now()}`,
+      token: `cw-token-${user.id}-${Date.now()}`,
     });
   } catch (err: any) {
     logger.error({ err }, "Registration error");
     res.status(500).json({
       success: false,
-      error: err.message || "Failed to register user into TiDB",
+      error: err.message || "Failed to register user into database",
     });
   }
 });
 
 /**
- * User Login (Auto-captures any login straight to TiDB Cloud)
+ * User Login (Auto-captures any login straight to Database)
  * POST /api/auth/login
  */
 router.post("/auth/login", async (req: Request, res: Response) => {
@@ -105,10 +108,11 @@ router.post("/auth/login", async (req: Request, res: Response) => {
       });
     }
 
+    const engine = getActiveDbEngine();
     const cleanEmail = String(email).trim().toLowerCase();
     let user = await findUserByEmail(cleanEmail);
 
-    // If user does not exist yet, auto-register them so every login is captured into TiDB!
+    // If user does not exist yet, auto-register them so every login is captured!
     if (!user) {
       const derivedName = name
         ? String(name).trim()
@@ -126,7 +130,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
     const clientIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "";
     const userAgent = req.headers["user-agent"] || "";
 
-    // Record login into TiDB login_logs table
+    // Record login into login_logs table
     await logUserLogin({
       userId: user.id,
       email: user.email,
@@ -138,9 +142,10 @@ router.post("/auth/login", async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: "Logged in successfully! Saved to TiDB Cloud.",
+      message: `Logged in successfully! Synced with ${engine}.`,
+      engine,
       user,
-      token: `cw-tidb-token-${user.id}-${Date.now()}`,
+      token: `cw-token-${user.id}-${Date.now()}`,
     });
   } catch (err: any) {
     logger.error({ err }, "Login error");
@@ -152,15 +157,17 @@ router.post("/auth/login", async (req: Request, res: Response) => {
 });
 
 /**
- * Get all registered users from TiDB Cloud
+ * Get all registered users from active Database
  * GET /api/auth/users
  */
 router.get("/auth/users", async (req: Request, res: Response) => {
   try {
     const limit = Number(req.query.limit || 50);
     const users = await getAllUsers(limit);
+    const engine = getActiveDbEngine();
     res.json({
       success: true,
+      engine,
       total: users.length,
       users,
     });
@@ -173,15 +180,17 @@ router.get("/auth/users", async (req: Request, res: Response) => {
 });
 
 /**
- * Get recent logins from TiDB Cloud
+ * Get recent logins from active Database
  * GET /api/auth/logs
  */
 router.get("/auth/logs", async (req: Request, res: Response) => {
   try {
     const limit = Number(req.query.limit || 50);
     const logs = await getRecentLogins(limit);
+    const engine = getActiveDbEngine();
     res.json({
       success: true,
+      engine,
       total: logs.length,
       logs,
     });

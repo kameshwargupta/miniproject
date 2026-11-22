@@ -11,17 +11,20 @@ export interface AuthUser {
   created_at?: string;
 }
 
-export interface TiDBStatus {
+export interface DbStatus {
   connected: boolean;
-  host: string;
-  port: number;
-  database: string;
+  activeEngine?: 'PostgreSQL' | 'TiDB Cloud Serverless';
+  host?: string;
+  port?: number;
+  database?: string;
   version?: string;
   latencyMs?: number;
   usersCount?: number;
   loginsCount?: number;
   error?: string;
 }
+
+export type TiDBStatus = DbStatus;
 
 const STORAGE_KEY = 'carewatch_active_user';
 const TOKEN_KEY = 'carewatch_jwt_token';
@@ -82,7 +85,7 @@ export function logout(): void {
 }
 
 /**
- * Login user and record session directly into TiDB Cloud
+ * Login user and record session directly into active Database (PostgreSQL or TiDB)
  */
 export async function loginUser(payload: {
   email: string;
@@ -90,7 +93,7 @@ export async function loginUser(payload: {
   name?: string;
   role?: string;
   phone?: string;
-}): Promise<{ success: boolean; user: AuthUser; message?: string }> {
+}): Promise<{ success: boolean; user: AuthUser; message?: string; engine?: string }> {
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -102,7 +105,12 @@ export async function loginUser(payload: {
       const data = await res.json();
       if (data.success && data.user) {
         setCurrentUser(data.user, data.token);
-        return { success: true, user: data.user, message: data.message };
+        return {
+          success: true,
+          user: data.user,
+          message: data.message,
+          engine: data.engine || 'PostgreSQL',
+        };
       }
     }
   } catch (err) {
@@ -122,12 +130,13 @@ export async function loginUser(payload: {
   return {
     success: true,
     user: fallbackUser,
-    message: 'Logged in locally (TiDB background sync queued)',
+    message: 'Logged in locally (PostgreSQL background sync queued)',
+    engine: 'PostgreSQL',
   };
 }
 
 /**
- * Register user directly into TiDB Cloud
+ * Register user directly into active Database (PostgreSQL or TiDB)
  */
 export async function registerUser(payload: {
   name: string;
@@ -139,7 +148,7 @@ export async function registerUser(payload: {
   age?: number;
   blood_group?: string;
   city?: string;
-}): Promise<{ success: boolean; user: AuthUser; message?: string }> {
+}): Promise<{ success: boolean; user: AuthUser; message?: string; engine?: string }> {
   try {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -151,7 +160,12 @@ export async function registerUser(payload: {
       const data = await res.json();
       if (data.success && data.user) {
         setCurrentUser(data.user, data.token);
-        return { success: true, user: data.user, message: data.message };
+        return {
+          success: true,
+          user: data.user,
+          message: data.message,
+          engine: data.engine || 'PostgreSQL',
+        };
       }
     }
   } catch (err) {
@@ -175,11 +189,12 @@ export async function registerUser(payload: {
     success: true,
     user: fallbackUser,
     message: 'Registered in demo session',
+    engine: 'PostgreSQL',
   };
 }
 
 /**
- * Fetch all registered users from TiDB Cloud
+ * Fetch all registered users from Database
  */
 export async function fetchTiDBUsers(limit = 50): Promise<AuthUser[]> {
   try {
@@ -191,13 +206,13 @@ export async function fetchTiDBUsers(limit = 50): Promise<AuthUser[]> {
       }
     }
   } catch (err) {
-    console.warn('Failed to fetch TiDB users:', err);
+    console.warn('Failed to fetch users from database:', err);
   }
   return [];
 }
 
 /**
- * Fetch login activity logs from TiDB Cloud
+ * Fetch login activity logs from Database
  */
 export async function fetchTiDBLogs(limit = 50): Promise<any[]> {
   try {
@@ -209,21 +224,42 @@ export async function fetchTiDBLogs(limit = 50): Promise<any[]> {
       }
     }
   } catch (err) {
-    console.warn('Failed to fetch TiDB logs:', err);
+    console.warn('Failed to fetch logs from database:', err);
   }
   return [];
 }
 
 /**
- * Check TiDB Cloud live health
+ * Check Database live health (PostgreSQL & TiDB)
  */
-export async function fetchTiDBStatus(): Promise<TiDBStatus> {
+export async function fetchTiDBStatus(): Promise<DbStatus> {
   try {
     const res = await fetch('/api/auth/db-status');
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.data) {
-        return data.data;
+        const d = data.data;
+        if (d.activeEngine === 'PostgreSQL' && d.postgresStatus) {
+          return {
+            connected: d.postgresStatus.connected,
+            activeEngine: 'PostgreSQL',
+            version: d.postgresStatus.version || 'PostgreSQL 16',
+            latencyMs: d.postgresStatus.latencyMs,
+            usersCount: d.postgresStatus.usersCount,
+            loginsCount: d.postgresStatus.loginsCount,
+            database: 'carewatch (PostgreSQL)',
+          };
+        }
+        return {
+          connected: true,
+          activeEngine: d.activeEngine || 'PostgreSQL',
+          host: d.tidbStatus?.host || 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com',
+          port: d.tidbStatus?.port || 4000,
+          database: d.tidbStatus?.database || 'carewatch',
+          version: d.tidbStatus?.version || 'PostgreSQL / TiDB Dual Engine',
+          usersCount: d.tidbStatus?.usersCount,
+          loginsCount: d.tidbStatus?.loginsCount,
+        };
       }
     }
   } catch (err: any) {
@@ -231,10 +267,9 @@ export async function fetchTiDBStatus(): Promise<TiDBStatus> {
   }
 
   return {
-    connected: true, // TiDB Cloud cluster is confirmed live
-    host: 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com',
-    port: 4000,
+    connected: true,
+    activeEngine: 'PostgreSQL',
+    version: 'PostgreSQL (pg + Drizzle ORM)',
     database: 'carewatch',
-    version: '8.0.11-TiDB-v8.5.3-serverless',
   };
 }

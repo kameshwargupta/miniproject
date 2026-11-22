@@ -1,15 +1,36 @@
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 import * as schema from "./schema";
+
+const { Pool } = pg;
 
 export * from "./schema";
 
-export const TIDB_CONFIG = {
-  host: process.env.TIDB_HOST || "gateway01.ap-northeast-1.prod.aws.tidbcloud.com",
-  port: Number(process.env.TIDB_PORT || 4000),
-  user: process.env.TIDB_USER || "2yubzc3at6JgYiJ.root",
-  password: process.env.TIDB_PASSWORD || "r9MOcOtabXnQHFie",
-  database: process.env.TIDB_DATABASE || "carewatch",
-  ssl: {
-    minVersion: "TLSv1.2",
-    rejectUnauthorized: false,
-  },
-};
+/**
+ * Creates or retrieves a PostgreSQL pool for Drizzle ORM
+ */
+export function getPostgresPool(connectionString?: string) {
+  const url =
+    connectionString ||
+    process.env.POSTGRES_URL ||
+    (process.env.DATABASE_URL?.startsWith("postgres") ? process.env.DATABASE_URL : undefined);
+
+  if (!url) {
+    return null;
+  }
+
+  const isSsl = url.includes("sslmode=require") || process.env.PGSSL === "true";
+  return new Pool({
+    connectionString: url,
+    ssl: isSsl ? { rejectUnauthorized: false } : undefined,
+  });
+}
+
+/**
+ * Initializes Drizzle ORM with PostgreSQL
+ */
+export function createPostgresDb(connectionString?: string) {
+  const pool = getPostgresPool(connectionString);
+  if (!pool) return null;
+  return drizzle(pool, { schema });
+}
