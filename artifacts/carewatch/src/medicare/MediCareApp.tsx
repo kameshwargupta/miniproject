@@ -36,6 +36,7 @@ import { EmergencySection } from './EmergencySection';
 import { RoleDashboardSection } from './RoleDashboardSection';
 import { AuthSection } from './AuthSection';
 import { AuthModal } from './AuthModal';
+import { LoginGate } from './LoginGate';
 import { getCurrentUser, subscribeAuth, logout, type AuthUser } from './authService';
 
 export const MediCareApp: React.FC = () => {
@@ -44,7 +45,7 @@ export const MediCareApp: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // TiDB Auth & User Session
+  // Auth & User Session — gate: user must log in before entering
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(getCurrentUser());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'database'>('login');
@@ -85,6 +86,17 @@ export const MediCareApp: React.FC = () => {
     { id: 'reminders', label: t.navReminders, icon: Clock },
     { id: 'emergency', label: t.navEmergency, icon: PhoneCall, alert: true },
   ];
+
+  // ── LOGIN GATE ── Show full-screen login if no user is authenticated
+  if (!currentUser) {
+    return (
+      <LoginGate
+        onAuthenticated={(user) => {
+          setCurrentUser(user);
+        }}
+      />
+    );
+  }
 
   return (
     <div
