@@ -72,9 +72,12 @@ const frontendDistCandidates = [
 for (const distPath of frontendDistCandidates) {
   if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
-    app.get("*", (req, res, next) => {
-      if (req.path.startsWith("/api")) return next();
-      res.sendFile(path.join(distPath, "index.html"));
+    // SPA fallback for HTML5 history API (Express 5 path-to-regexp v8 compatible)
+    app.use((req, res, next) => {
+      if (req.method === "GET" && !req.path.startsWith("/api")) {
+        return res.sendFile(path.join(distPath, "index.html"));
+      }
+      next();
     });
     break;
   }
