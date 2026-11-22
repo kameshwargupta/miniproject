@@ -18,6 +18,7 @@ import {
   Sun,
   User,
   Database,
+  UserCheck,
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES, type LanguageCode, TRANSLATIONS } from './translations';
 import { FloatingCopilot } from './FloatingCopilot';
@@ -29,6 +30,7 @@ import { TelemedicineSection } from './TelemedicineSection';
 import { ReminderSection } from './ReminderSection';
 import { EmergencySection } from './EmergencySection';
 import { RoleDashboardSection } from './RoleDashboardSection';
+import { AuthSection } from './AuthSection';
 import { AuthModal } from './AuthModal';
 import { getCurrentUser, subscribeAuth, type AuthUser } from './authService';
 
@@ -69,6 +71,7 @@ export const MediCareApp: React.FC = () => {
 
   const navItems = [
     { id: 'dashboard', label: t.navDashboard, icon: LayoutDashboard },
+    { id: 'account', label: lang === 'hi' ? 'साइन इन व डेटाबेस' : 'Sign In & DB', icon: UserCheck },
     { id: 'queue', label: t.navQueue, icon: Ticket },
     { id: 'reports', label: t.navReportScanner, icon: FileText },
     { id: 'medicines', label: t.navMedicineScanner, icon: Pill },
@@ -120,25 +123,25 @@ export const MediCareApp: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Action Bar: TiDB Auth, Language Selector, Dark Mode, Emergency Pill */}
+          {/* Right Action Bar: Database Auth, Language Selector, Dark Mode, Emergency Pill */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* TiDB User Profile / Login Button */}
+            {/* User Profile / Login Navigation Button */}
             <button
               type="button"
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => setActiveTab('account')}
               className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
-              title="TiDB Cloud Secure Authentication"
+              title="Neon PostgreSQL / Cloud Authentication"
             >
               <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
                 {currentUser ? currentUser.name.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
               </div>
               <div className="text-left hidden sm:block">
                 <span className="block text-xs font-bold leading-tight truncate max-w-[110px]">
-                  {currentUser ? currentUser.name : (lang === 'hi' ? 'लॉगिन करें' : 'Sign In')}
+                  {currentUser ? currentUser.name : (lang === 'hi' ? 'लॉगिन / साइन इन' : 'Sign In')}
                 </span>
                 <span className="flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold leading-none">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  TiDB Cloud
+                  PostgreSQL
                 </span>
               </div>
             </button>
@@ -238,26 +241,26 @@ export const MediCareApp: React.FC = () => {
             </nav>
           </div>
 
-          {/* TiDB Cloud Database Quick Status Banner */}
+          {/* Cloud Database Quick Status Banner */}
           <div
-            onClick={() => setIsAuthModalOpen(true)}
+            onClick={() => setActiveTab('account')}
             className="p-3.5 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl border border-indigo-800/40 shadow-sm cursor-pointer hover:border-indigo-600 transition-all"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
                 <Database className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs font-black">TiDB Cloud Serverless</span>
+                <span className="text-xs font-black">Neon PostgreSQL DB</span>
               </div>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             </div>
             <p className="text-[11px] text-slate-300 leading-snug">
               {currentUser
                 ? `${currentUser.name} (${currentUser.role})`
-                : (lang === 'hi' ? 'लॉगिन करें - सीधा TiDB में सेव होगा' : 'Sign in to sync your profile to TiDB')}
+                : (lang === 'hi' ? 'खाता बनाएं - सीधा PostgreSQL में सुरक्षित' : 'Sign in to sync your live data')}
             </p>
             <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-cyan-300 font-mono">
-              <span>Port 4000</span>
-              <span className="text-emerald-400 font-bold">● Active</span>
+              <span>5 Live Tables</span>
+              <span className="text-emerald-400 font-bold">● Active Sync</span>
             </div>
           </div>
         </aside>
@@ -285,15 +288,15 @@ export const MediCareApp: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setIsMobileMenuOpen(false);
-                  setIsAuthModalOpen(true);
+                  setActiveTab('account');
                 }}
                 className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-700 dark:text-blue-300 cursor-pointer"
               >
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-blue-600" />
-                  <span>{currentUser ? currentUser.name : 'Sign In / Register'}</span>
+                  <span>{currentUser ? currentUser.name : (lang === 'hi' ? 'साइन इन / खाता' : 'Sign In / Register')}</span>
                 </div>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">● TiDB</span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">● Postgres</span>
               </button>
 
               <nav className="space-y-1">
@@ -330,6 +333,14 @@ export const MediCareApp: React.FC = () => {
           {activeTab === 'dashboard' && (
             <RoleDashboardSection
               lang={lang}
+              onNavigateTab={setActiveTab}
+            />
+          )}
+          {activeTab === 'account' && (
+            <AuthSection
+              lang={lang}
+              currentUser={currentUser}
+              onUserChanged={setCurrentUser}
               onNavigateTab={setActiveTab}
             />
           )}
