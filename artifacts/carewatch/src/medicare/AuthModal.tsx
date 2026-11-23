@@ -122,7 +122,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const res = await loginUser({ email, password, name, role, phone });
     setLoading(false);
 
-    if (res.success) {
+    if (res.success && res.user) {
       setCurrentUser(res.user);
       if (onUserChanged) onUserChanged(res.user);
       const eng = res.engine || dbStatus?.activeEngine || 'Neon PostgreSQL';
@@ -169,7 +169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     });
     setLoading(false);
 
-    if (res.success) {
+    if (res.success && res.user) {
       setCurrentUser(res.user);
       if (onUserChanged) onUserChanged(res.user);
       const eng = res.engine || dbStatus?.activeEngine || 'Neon PostgreSQL';

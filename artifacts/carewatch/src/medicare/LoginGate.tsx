@@ -39,41 +39,68 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
       setFeedback({ type: 'error', text: 'Please enter your email address.' });
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setFeedback({ type: 'error', text: 'Please enter a valid email address (e.g. name@example.com).' });
+      return;
+    }
+    if (!password) {
+      setFeedback({ type: 'error', text: 'Please enter your password.' });
       return;
     }
     setLoading(true);
     setFeedback(null);
 
-    const res = await loginUser({ email: email.trim(), password, name, role, phone });
+    const res = await loginUser({ email: cleanEmail, password, name, role, phone });
     setLoading(false);
 
     if (res.success && res.user) {
       setFeedback({ type: 'success', text: `Welcome back, ${res.user.name}! Logging you in...` });
-      setTimeout(() => onAuthenticated(res.user), 800);
+      setTimeout(() => onAuthenticated(res.user!), 800);
     } else {
-      setFeedback({ type: 'error', text: res.message || 'Login failed. Please try again.' });
+      setFeedback({ type: 'error', text: res.message || 'Login failed. Please check your credentials.' });
     }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      setFeedback({ type: 'error', text: 'Name and email are required.' });
+    const cleanName = name.trim();
+    const cleanEmail = email.trim();
+
+    if (!cleanName || cleanName.length < 2) {
+      setFeedback({ type: 'error', text: 'Please enter your full name (minimum 2 characters).' });
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setFeedback({ type: 'error', text: 'Please enter a valid email address (e.g. name@example.com).' });
+      return;
+    }
+    if (!password || password.length < 6) {
+      setFeedback({ type: 'error', text: 'Password must be at least 6 characters long.' });
+      return;
+    }
+    if (phone && phone.trim().length > 0 && phone.trim().length < 7) {
+      setFeedback({ type: 'error', text: 'Please enter a valid phone number (at least 7 digits).' });
+      return;
+    }
+
     setLoading(true);
     setFeedback(null);
 
-    const res = await registerUser({ name, email, password, role, phone });
+    const res = await registerUser({ name: cleanName, email: cleanEmail, password, role, phone });
     setLoading(false);
 
     if (res.success && res.user) {
-      setFeedback({ type: 'success', text: `Account created! Welcome, ${res.user.name}!` });
-      setTimeout(() => onAuthenticated(res.user), 800);
+      setFeedback({ type: 'success', text: `Account created successfully! Welcome, ${res.user.name}!` });
+      setTimeout(() => onAuthenticated(res.user!), 800);
     } else {
-      setFeedback({ type: 'error', text: res.message || 'Registration failed. Please try again.' });
+      setFeedback({ type: 'error', text: res.message || 'Registration failed. Please check your information.' });
     }
   };
 
@@ -200,7 +227,12 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
 
               {/* Password field */}
               <div>
-                <label className="block text-xs font-bold text-white/60 mb-1.5 uppercase tracking-wider">Password</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-white/60 uppercase tracking-wider">Password *</label>
+                  {mode === 'register' && (
+                    <span className="text-[10px] text-cyan-400/80 font-medium">Min 6 characters</span>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                   <input
@@ -290,6 +322,42 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                 </>
               )}
             </p>
+
+            {/* Quick Demo Accounts */}
+            <div className="pt-3 border-t border-white/10">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-white/50 mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Demo Accounts (Click to autofill):</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setEmail('patient@carewatch.com');
+                    setPassword('password123');
+                    setFeedback(null);
+                  }}
+                  className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-2 text-left cursor-pointer transition-all"
+                >
+                  <div className="text-cyan-300 font-bold text-xs">Patient Account</div>
+                  <div className="text-white/40 text-[10px] truncate">patient@carewatch.com</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setEmail('doctor@carewatch.com');
+                    setPassword('password123');
+                    setFeedback(null);
+                  }}
+                  className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-2 text-left cursor-pointer transition-all"
+                >
+                  <div className="text-emerald-300 font-bold text-xs">Doctor Account</div>
+                  <div className="text-white/40 text-[10px] truncate">doctor@carewatch.com</div>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

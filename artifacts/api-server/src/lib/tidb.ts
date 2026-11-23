@@ -121,7 +121,7 @@ export async function findUserByEmail(email: string): Promise<TiDBUser | null> {
   try {
     const p = getTiDBPool();
     const [rows] = await p.query<RowDataPacket[]>(
-      "SELECT id, name, email, role, phone, gender, age, blood_group, city, created_at FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1",
+      "SELECT id, name, email, password, role, phone, gender, age, blood_group, city, created_at FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1",
       [email.trim()],
     );
     if (rows && rows.length > 0) {

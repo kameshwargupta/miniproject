@@ -254,7 +254,7 @@ export async function findPostgresUserByEmail(email: string): Promise<PostgresUs
   if (!p) return null;
   try {
     const res = await p.query(
-      "SELECT id, name, email, role, phone, gender, age, blood_group, city, created_at FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1",
+      "SELECT id, name, email, password, role, phone, gender, age, blood_group, city, created_at FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1",
       [email.trim()],
     );
     return (res.rows[0] as PostgresUser) || null;

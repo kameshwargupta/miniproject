@@ -48,18 +48,42 @@ router.post("/auth/register", async (req: Request, res: Response) => {
   try {
     const { name, email, password, role, phone, gender, age, blood_group, city } = req.body;
 
-    if (!email || !name) {
+    if (!name || String(name).trim().length < 2) {
       return res.status(400).json({
         success: false,
-        error: "Name and Email are required to register.",
+        error: "Full name is required (minimum 2 characters).",
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(String(email).trim())) {
+      return res.status(400).json({
+        success: false,
+        error: "Please enter a valid email address.",
+      });
+    }
+
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: "Password is required and must be at least 6 characters.",
+      });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const existing = await findUserByEmail(cleanEmail);
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        error: "An account with this email already exists. Please log in instead.",
       });
     }
 
     const engine = getActiveDbEngine();
     const user = await registerOrUpdateUser({
       name: String(name).trim(),
-      email: String(email).trim().toLowerCase(),
-      password: password ? String(password) : "carewatch_pass_123",
+      email: cleanEmail,
+      password: String(password),
       role: role ? String(role) : "patient",
       phone: phone ? String(phone) : "",
       gender: gender ? String(gender) : "",
@@ -80,11 +104,13 @@ router.post("/auth/register", async (req: Request, res: Response) => {
       userAgent,
     });
 
+    const { password: _, ...safeUser } = user as any;
+
     res.json({
       success: true,
-      message: `User registered successfully into ${engine}!`,
+      message: `Account created successfully! Welcome to CareWatch, ${user.name}.`,
       engine,
-      user,
+      user: safeUser,
       token: `cw-token-${user.id}-${Date.now()}`,
     });
   } catch (err: any) {
@@ -98,34 +124,42 @@ router.post("/auth/register", async (req: Request, res: Response) => {
 
 router.post("/auth/login", async (req: Request, res: Response) => {
   try {
-    const { email, password, name, role, phone } = req.body;
+    const { email, password } = req.body;
 
-    if (!email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(String(email).trim())) {
       return res.status(400).json({
         success: false,
-        error: "Email is required to log in.",
+        error: "Please enter a valid email address.",
+      });
+    }
+
+    if (!password || String(password).trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Password is required to log in.",
+      });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const user = await findUserByEmail(cleanEmail);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: "No account found with this email. Please check your information or create an account.",
+      });
+    }
+
+    // Verify password if user has password recorded
+    if (user.password && user.password !== String(password)) {
+      return res.status(401).json({
+        success: false,
+        error: "Incorrect password. Please enter the correct password.",
       });
     }
 
     const engine = getActiveDbEngine();
-    const cleanEmail = String(email).trim().toLowerCase();
-    let user = await findUserByEmail(cleanEmail);
-
-    // If user does not exist yet, auto-register them so every real login is captured!
-    if (!user) {
-      const derivedName = name
-        ? String(name).trim()
-        : cleanEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-
-      user = await registerOrUpdateUser({
-        name: derivedName,
-        email: cleanEmail,
-        password: password ? String(password) : "carewatch_default_auth",
-        role: role ? String(role) : "patient",
-        phone: phone ? String(phone) : "",
-      });
-    }
-
     const clientIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "";
     const userAgent = req.headers["user-agent"] || "";
 
@@ -133,16 +167,18 @@ router.post("/auth/login", async (req: Request, res: Response) => {
       userId: user.id,
       email: user.email,
       name: user.name,
-      role: role || user.role,
+      role: user.role,
       ipAddress: clientIp,
       userAgent,
     });
 
+    const { password: _, ...safeUser } = user as any;
+
     res.json({
       success: true,
-      message: `Logged in successfully! Synced with ${engine}.`,
+      message: `Welcome back, ${user.name}! Logged in successfully.`,
       engine,
-      user,
+      user: safeUser,
       token: `cw-token-${user.id}-${Date.now()}`,
     });
   } catch (err: any) {

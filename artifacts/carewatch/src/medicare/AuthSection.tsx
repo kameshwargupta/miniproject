@@ -118,7 +118,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
     const res = await loginUser({ email, password, name, role, phone });
     setLoading(false);
 
-    if (res.success) {
+    if (res.success && res.user) {
       onUserChanged(res.user);
       const eng = res.engine || dbStatus?.activeEngine || 'Neon PostgreSQL';
       setFeedbackMsg({
@@ -161,7 +161,7 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
     });
     setLoading(false);
 
-    if (res.success) {
+    if (res.success && res.user) {
       onUserChanged(res.user);
       const eng = res.engine || dbStatus?.activeEngine || 'Neon PostgreSQL';
       setFeedbackMsg({
